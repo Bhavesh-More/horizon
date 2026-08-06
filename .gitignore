@@ -1,0 +1,31 @@
+node_modules/
+dist/
+out/
+release/
+.turbo/
+*.log
+.DS_Store
+.env
+*.db.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# Whether you use PnP or not, the node_modules folder is often used to store
+
+# .gitignore
+node_modules/
+dist/
+dist-electron/
+release/
+.turbo/
+*.log
+.DS_Store
+.env
+*.db
+
+#!.yarn/cache
+.pnp.*
+

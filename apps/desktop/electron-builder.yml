@@ -1,0 +1,12 @@
+appId: com.horizon.app
+productName: Horizon
+directories:
+  output: release
+files:
+  - out/**
+mac:
+  category: public.app-category.utilities
+win:
+  target: nsis
+linux:
+  target: AppImage

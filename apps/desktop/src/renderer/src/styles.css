@@ -1,0 +1,4 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+@import "@horizon/design-tokens/src/tokens.css";

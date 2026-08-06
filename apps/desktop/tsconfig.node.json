@@ -1,0 +1,9 @@
+{
+  "extends": "@horizon/tsconfig/base.json",
+  "compilerOptions": {
+    "composite": true,
+    "outDir": "dist-ts/node",
+    "types": ["node", "electron-vite/node"]
+  },
+  "include": ["src/main", "src/preload", "electron.vite.config.ts"]
+}

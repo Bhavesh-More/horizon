@@ -1,0 +1,240 @@
+# Progress Tracker
+
+Living document. Updated as work is completed — mark a checkbox only when a phase's exit criteria (defined in the Build Plan) are actually met, not when the code is merged but unverified. This file is the fast answer to "where are we," so it needs to stay honest even under deadline pressure.
+
+---
+
+## How to Use
+
+- Check off an item only once its **exit criteria** (copied from the Build Plan into each phase section below) are demonstrably true — run through them before ticking the box, don't tick from memory.
+- If a phase is partially done, leave it unchecked and add a one-line note under **Status notes** rather than checking it early.
+- Update the **Current phase** line at the top every time work moves to a new phase, so anyone opening this file gets the answer in one glance.
+- This file tracks _phase-level_ progress against the Build Plan. Component-level detail belongs in `ui-registry.md`, not here.
+
+---
+
+## At a glance
+
+**Current phase:** _(update this)_
+**MVP checkpoint (Phases 0–5) reached:** ☐
+**Track-ready build (Phases 0–11) reached:** ☐
+**Full scope (Phases 0–15) reached:** ☐
+
+---
+
+## Phase 0 — Foundation & scaffolding
+
+- [ ] Turborepo + Yarn (classic v1) workspace scaffolded (`apps/desktop`, `packages/ui`, `packages/design-tokens`, `packages/shared-types`, `packages/eslint-config`, `packages/tsconfig`)
+- [ ] `packages/design-tokens` wired into a Tailwind v4 `@theme` preset
+- [ ] `packages/shared-types` zod schema pattern established
+- [ ] Electron main process boots a window; `preload/index.ts` exposes an initial `window.horizon` surface
+- [ ] `better-sqlite3` + Drizzle wired up; one trivial migration proven
+- [ ] `secure-storage.ts` stubbed (module boundary exists, unused)
+- [ ] Base renderer shell: sidebar with 9 tab labels, top bar, no content yet
+- [ ] `eslint`/`prettier`/`vitest` running in `turbo` pipelines
+
+**Exit criteria:** app launches, empty sidebar renders with the Purge-derived theme, one dummy IPC round-trip works end-to-end through a zod-validated schema, one Drizzle migration applies cleanly.
+**Status notes:**
+
+---
+
+## Phase 1 — Scan & index
+
+- [ ] `scan_runs` and `file_index` tables
+- [ ] `scan.worker.ts` walking a configured scope, streaming `found` messages
+- [ ] IPC: `scan:start`, `scan:progress`, completion event
+- [ ] `scanner.ts` service capturing per-file metadata
+- [ ] Overview tab v1: Run Scan button, live-updating result list, basic disk-summary chip, category counts
+- [ ] Manual/hardcoded scope (Documents/Desktop/Downloads/Pictures/Movies/Music)
+
+**Exit criteria:** triggering a scan streams real file rows into `file_index`, results visibly populate the Overview list live, `scan_runs` finalizes with correct totals.
+**Status notes:**
+
+---
+
+## Phase 2 — Deletion safety core
+
+- [ ] `deletion-policy.ts` — two-tier allow/block engine
+- [ ] `trash.ts` — sole file-removal call site, wrapping `trash` (npm)
+- [ ] `cleanup_actions` table
+- [ ] IPC: `cleanup:trash`, re-validated server-side
+- [ ] Shared confirmation-modal component in `packages/ui`
+
+**Exit criteria:** given hand-picked `file_index` ids, the app can safely move them to OS trash, log a correct `cleanup_actions` row, and mark source rows `removed_at`.
+**Status notes:**
+
+---
+
+## Phase 3 — Duplicate detection (exact + perceptual)
+
+- [ ] `hashing.ts` in `hash.worker.ts`: SHA-256 exact-match hashing above size threshold
+- [ ] Perceptual hashing for images (`sharp` + `blockhash-core`), clustering near-matches
+- [ ] `duplicate_groups` / `duplicate_group_members` tables
+- [ ] Auto-trigger after scan completion
+- [ ] IPC: `duplicates:list`
+- [ ] Duplicates tab: grouped display, default "keep newest" selection, thumbnails, wired to trash flow
+
+**Exit criteria:** a folder with known exact duplicates and known near-identical images produces correct groups, reclaimable-space totals are right, trashing a selection updates the group and writes to `cleanup_actions`.
+**Status notes:**
+
+---
+
+## Phase 4 — Unused files
+
+- [ ] `staleness.ts` (accessed_at with documented modified_at fallback)
+- [ ] IPC: `unused-files:list` with `thresholdDays`
+- [ ] Unused Files tab: staleness slider, grouped results, multi-select, wired to Trash
+
+**Exit criteria:** threshold changes correctly refilter results with no re-scan; trashing works identically to Duplicates.
+**Status notes:**
+
+---
+
+## Phase 5 — Large files
+
+- [ ] IPC: `large-files:list` with `minSize`, `category`, `sort`
+- [ ] Large Files tab: filtering, sorting, preview, reveal-in-file-manager, multi-select
+
+**Exit criteria:** — _(closes out the MVP tier; see checkpoint below)_
+**Status notes:**
+
+**— MVP checkpoint —**
+
+- [ ] Streaming scan, exact + near-duplicate detection, unused-file detection, large-files browser, trash-only deletion with confirmation and audit trail, themed UI shell all working together as a real, demoable product.
+
+---
+
+## Phase 6 — AI provider foundation (BYOK)
+
+- [ ] `secure-storage.ts` fully implemented (`safeStorage` in/out, never returned across IPC, never logged)
+- [ ] `ai_provider_config` table (no key stored here)
+- [ ] `llm-client.ts` wrapping Ollama, OpenAI, Anthropic, Groq, OpenRouter behind one interface
+- [ ] IPC: `ai-provider:configure`, `ai-provider:status`, `ai-provider:select`
+- [ ] Local Ollama as zero-config default, no silent cloud fallback
+- [ ] Settings tab: AI Provider & API Key panel
+
+**Exit criteria:** switching between Ollama (no key) and a cloud provider (real key) both work; an invalid key produces a clear inline error and nothing is persisted; the key is verifiably never present in the SQLite file or in logs.
+**Status notes:**
+
+---
+
+## Phase 7 — Near-duplicate detection (embeddings)
+
+- [ ] `embeddings.ts` calling the configured provider's embedding endpoint
+- [ ] Cosine-similarity clustering into `hash_type=embedding` groups
+- [ ] Extends existing Duplicates tab with the third group type
+
+**Exit criteria:** a folder with near-identical (reworded, not identical) text documents correctly clusters via embedding similarity, displayed with its similarity score.
+**Status notes:**
+
+---
+
+## Phase 8 — Forecasting
+
+- [ ] `scheduler.ts` (`node-cron`, daily) capturing usage snapshots
+- [ ] First-run bootstrap pass backfilling synthetic history from `file_index.created_at`
+- [ ] `forecasting.ts` fitting an explainable trend model, writing `forecasts`
+- [ ] IPC: `forecast:get`, `forecast:whatIf`
+- [ ] Forecast tab: trend chart, per-category breakdown, what-if simulator, "Apply this plan" deep-link
+- [ ] Overview tab updated with forecast headline
+
+**Exit criteria:** on a fresh scan with no prior history, a plausible bootstrapped trend line and projected full-by date render immediately; the what-if simulator recomputes without mutating stored history; confidence reporting visibly distinguishes bootstrapped vs. real data.
+**Status notes:**
+
+---
+
+## Phase 9 — AI recommendations
+
+- [ ] Triggered after scan + duplicate detection complete for a `scan_run`
+- [ ] Grounded prompt assembly (metadata only, never raw file contents)
+- [ ] Zod-validated structured LLM output with one-shot repair retry
+- [ ] `recommendations` table
+- [ ] IPC: `recommendations:list`
+- [ ] Assistant tab v1: recommendation cards with Review/Dismiss
+
+**Exit criteria:** recommendation text visibly references real file names/paths/sizes from the actual test scan, not generic boilerplate; a deliberately malformed model response triggers the repair pass instead of a crash.
+**Status notes:**
+
+---
+
+## Phase 10 — Chat assistant
+
+- [ ] Lightweight retrieval step (recent scans, duplicate summary, latest forecast, keyword-matched rows)
+- [ ] IPC: `assistant:chat` + `assistant:stream`
+- [ ] Assistant tab v2: chat input below recommendation cards
+
+**Exit criteria:** a question like "what's eating my Downloads folder" returns an answer grounded in actual indexed data, and visibly hedges rather than inventing an answer when the data doesn't support one.
+**Status notes:**
+
+---
+
+## Phase 11 — Archiving
+
+- [ ] `archiver.ts`: compress → verify → only then trash originals
+- [ ] `archives` table + paired `cleanup_actions` row
+- [ ] IPC: `archive:create`, `archive:list`, `archive:restore`
+- [ ] Archive tab: bundle list, view-contents, restore
+- [ ] Real Archive buttons wired up in Duplicates/Unused Files/Large Files
+
+**Exit criteria:** a deliberately interrupted/failed compression leaves originals untouched; a successful archive-then-restore round-trip returns files to their original path with a correct `cleanup_actions` audit trail.
+**Status notes:**
+
+---
+
+## Phase 12 — Activity / audit log tab
+
+- [ ] Activity tab: reverse-chronological log of scans/cleans/archives/restores
+- [ ] `Undo` affordance on recently-trashed items
+
+**Exit criteria:** every action taken across the whole app during earlier-phase testing shows up correctly here, in order, with correct byte totals.
+**Status notes:**
+
+---
+
+## Phase 13 — Onboarding wizard
+
+- [ ] Full-screen modal wizard, blocks navigation until complete (`FirstRunGate` pattern)
+- [ ] Welcome → folder-picker/Full Disk Access → AI provider setup → scan scope → first scan → results summary → Overview
+- [ ] IPC: `settings:requestScanScope`, `settings:save`
+
+**Exit criteria:** a completely fresh install, with no prior state, walks a new user end-to-end to a populated Overview tab without needing developer intervention.
+**Status notes:**
+
+---
+
+## Phase 14 — Tray ("Horizon Mini")
+
+- [ ] Tray icon + popover: reclaimable space, forecast headline, "Clean Safe Files Now," "Open Horizon"
+
+**Exit criteria:** the tray popover reflects the same live numbers as the full app without requiring the main window to be open.
+**Status notes:**
+
+---
+
+## Phase 15 — Polish, packaging, and stretch items
+
+- [ ] `electron-builder` packaging (`.dmg`/`.exe`/AppImage)
+- [ ] Keyboard shortcuts ⌘1–⌘9 across all tabs
+- [ ] Full theme QA pass (light/dark/system, all 9 tabs + tray)
+- [ ] Incremental re-scan (only re-index changed paths)
+- [ ] _Stretch:_ ⌘K command palette
+- [ ] _Stretch:_ scheduled/background monitoring with local notifications
+- [ ] _Stretch:_ further what-if simulator polish
+
+**Exit criteria:** a judge installs the packaged app on a clean machine with no manually-installed dependencies and reaches a meaningful first result quickly.
+**Status notes:**
+
+---
+
+## Invariant spot-checks
+
+Re-verify these whenever the phase that introduces or touches them is marked done — see `architecture.md` §6 and `code-standards.md` §9 for full definitions.
+
+- [ ] I-1–I-4 (destructive-action safety) — checked at Phase 2, and re-checked at every phase adding a new Trash/Archive button (3, 4, 5, 11)
+- [ ] I-5–I-7 (privacy & secrets) — checked at Phase 6, and re-checked at every phase adding a new LLM call (7, 9, 10)
+- [ ] I-8–I-10 (architectural boundaries) — continuous, enforced via lint/review from Phase 0 onward
+- [ ] I-11 (migrations) — checked on every schema change, any phase
+- [ ] I-12 (worker threads) — checked at Phases 1 and 3
+- [ ] I-13 (no double-counted bytes) — checked at Phases 1 and 8
+- [ ] I-14 (audit log integrity) — checked from Phase 2 onward, verified end-to-end at Phase 12
+- [ ] I-15 (IPC payload validation) — checked on every new IPC channel, any phase

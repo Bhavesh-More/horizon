@@ -1,0 +1,10 @@
+{
+  "name": "@horizon/design-tokens",
+  "version": "0.0.0",
+  "private": true,
+  "main": "src/index.ts",
+  "files": [
+    "src",
+    "tailwind-preset.js"
+  ]
+}

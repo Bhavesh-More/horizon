@@ -29,3 +29,5 @@ release/
 #!.yarn/cache
 .pnp.*
 
+context/designs
+

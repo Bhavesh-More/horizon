@@ -15,7 +15,7 @@ Living document. Updated as work is completed — mark a checkbox only when a ph
 
 ## At a glance
 
-**Current phase:** Phase 1 — Scan & index
+**Current phase:** Phase 2 — Deletion safety core
 **MVP checkpoint (Phases 0–5) reached:** ☐
 **Track-ready build (Phases 0–11) reached:** ☐
 **Full scope (Phases 0–15) reached:** ☐
@@ -40,15 +40,15 @@ Living document. Updated as work is completed — mark a checkbox only when a ph
 
 ## Phase 1 — Scan & index
 
-- [ ] `scan_runs` and `file_index` tables
-- [ ] `scan.worker.ts` walking a configured scope, streaming `found` messages
-- [ ] IPC: `scan:start`, `scan:progress`, completion event
-- [ ] `scanner.ts` service capturing per-file metadata
-- [ ] Overview tab v1: Run Scan button, live-updating result list, basic disk-summary chip, category counts
-- [ ] Manual/hardcoded scope (Documents/Desktop/Downloads/Pictures/Movies/Music)
+- [x] `scan_runs` and `file_index` tables
+- [x] `scan.worker.ts` walking a configured scope, streaming `found` messages
+- [x] IPC: `scan:start`, `scan:progress`, completion event
+- [x] `scanner.ts` service capturing per-file metadata
+- [x] Overview tab v1: Run Scan button, live-updating result list, basic disk-summary chip, category counts
+- [x] Manual/hardcoded scope (Documents/Desktop/Downloads/Pictures/Movies/Music)
 
 **Exit criteria:** triggering a scan streams real file rows into `file_index`, results visibly populate the Overview list live, `scan_runs` finalizes with correct totals.
-**Status notes:**
+**Status notes:** Phase 1 implementation complete. Worker thread traversing scope, streaming metadata over typed IPC into SQLite file_index & scan_runs, Overview tab rendering live stream & category breakdowns.
 
 ---
 

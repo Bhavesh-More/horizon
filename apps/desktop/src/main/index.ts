@@ -5,6 +5,7 @@ import {
   AppPingResponseSchema,
 } from "@horizon/shared-types";
 import { runMigrations } from "./db/migrate";
+import { registerScanIpc } from "./ipc/scan";
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -22,6 +23,7 @@ function createWindow() {
 
   if (process.env.ELECTRON_RENDERER_URL) {
     win.loadURL(process.env.ELECTRON_RENDERER_URL);
+    win.webContents.openDevTools({ mode: "detach" });
   } else {
     win.loadFile(path.join(__dirname, "../renderer/index.html"));
   }
@@ -34,9 +36,11 @@ ipcMain.handle("app:ping", (_event, payload: unknown) => {
 
 app.whenReady().then(() => {
   runMigrations();
+  registerScanIpc();
   createWindow();
 });
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
+

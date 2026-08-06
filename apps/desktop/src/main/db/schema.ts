@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, index } from "drizzle-orm/sqlite-core";
 
 export const scanRuns = sqliteTable("scan_runs", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -11,3 +11,30 @@ export const scanRuns = sqliteTable("scan_runs", {
   totalFiles: integer("total_files").default(0),
   totalBytes: integer("total_bytes").default(0),
 });
+
+export const fileIndex = sqliteTable(
+  "file_index",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    scanRunId: integer("scan_run_id")
+      .notNull()
+      .references(() => scanRuns.id),
+    path: text("path").notNull().unique(),
+    sizeBytes: integer("size_bytes").notNull(),
+    extension: text("extension"),
+    category: text("category").notNull(),
+    createdAt: text("created_at"),
+    modifiedAt: text("modified_at"),
+    accessedAt: text("accessed_at"),
+    contentHash: text("content_hash"),
+    perceptualHash: text("perceptual_hash"),
+    removedAt: text("removed_at"),
+  },
+  (table) => ({
+    idxFileIndexHash: index("idx_file_index_hash").on(table.contentHash),
+    idxFileIndexCategory: index("idx_file_index_category").on(table.category),
+    idxFileIndexAccessed: index("idx_file_index_accessed").on(table.accessedAt),
+  })
+);
+
+

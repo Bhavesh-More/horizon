@@ -38,4 +38,13 @@ Keep the `Classes` block to the actual, real `className` strings from the compon
 
 ## Components
 
-*Empty. Components will be added here as they are built.*
+### Button
+- **Path:** `packages/ui/src/Button.tsx`
+- **Used by:** App shell buttons
+- **Props:** `ButtonHTMLAttributes<HTMLButtonElement>` — native button props forwarded through the shared primitive
+- **Classes:**
+  ```tsx
+  className={`rounded-sm bg-btn-primary-bg px-3 py-2 text-row text-btn-primary-text ${className}`}
+  ```
+- **Tokens used:** `btn-primary-bg`, `btn-primary-text`, `text-row`, `radius-sm`, `spacing-2`, `spacing-3`
+- **Notes:** Shared primary button primitive for the Phase 0 shell; keep it token-only and avoid adding raw color classes.

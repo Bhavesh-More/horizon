@@ -15,7 +15,7 @@ Living document. Updated as work is completed — mark a checkbox only when a ph
 
 ## At a glance
 
-**Current phase:** _(update this)_
+**Current phase:** Phase 1 — Scan & index
 **MVP checkpoint (Phases 0–5) reached:** ☐
 **Track-ready build (Phases 0–11) reached:** ☐
 **Full scope (Phases 0–15) reached:** ☐
@@ -24,17 +24,17 @@ Living document. Updated as work is completed — mark a checkbox only when a ph
 
 ## Phase 0 — Foundation & scaffolding
 
-- [ ] Turborepo + Yarn (classic v1) workspace scaffolded (`apps/desktop`, `packages/ui`, `packages/design-tokens`, `packages/shared-types`, `packages/eslint-config`, `packages/tsconfig`)
-- [ ] `packages/design-tokens` wired into a Tailwind v4 `@theme` preset
-- [ ] `packages/shared-types` zod schema pattern established
-- [ ] Electron main process boots a window; `preload/index.ts` exposes an initial `window.horizon` surface
-- [ ] `better-sqlite3` + Drizzle wired up; one trivial migration proven
-- [ ] `secure-storage.ts` stubbed (module boundary exists, unused)
-- [ ] Base renderer shell: sidebar with 9 tab labels, top bar, no content yet
-- [ ] `eslint`/`prettier`/`vitest` running in `turbo` pipelines
+- [x] Turborepo + Yarn (classic v1) workspace scaffolded (`apps/desktop`, `packages/ui`, `packages/design-tokens`, `packages/shared-types`, `packages/eslint-config`, `packages/tsconfig`)
+- [x] `packages/design-tokens` wired into a Tailwind v4 `@theme` preset
+- [x] `packages/shared-types` zod schema pattern established
+- [x] Electron main process boots a window; `preload/index.ts` exposes an initial `window.horizon` surface
+- [x] `better-sqlite3` + Drizzle wired up; one trivial migration proven
+- [x] `secure-storage.ts` stubbed (module boundary exists, unused)
+- [x] Base renderer shell: sidebar with 9 tab labels, top bar, no content yet
+- [x] `eslint`/`prettier`/`vitest` running in `turbo` pipelines
 
 **Exit criteria:** app launches, empty sidebar renders with the Purge-derived theme, one dummy IPC round-trip works end-to-end through a zod-validated schema, one Drizzle migration applies cleanly.
-**Status notes:**
+**Status notes:** Phase 0 implementation is complete in the workspace: contract-validated ping IPC, fixed app window sizing, token-safe shared button primitive, generated Drizzle migration files, startup migration execution, and the fixed desktop shell scaffold are in place.
 
 ---
 

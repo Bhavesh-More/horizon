@@ -2,7 +2,7 @@ export {};
 declare global {
   interface Window {
     horizon: {
-      ping: () => Promise<string>;
+      ping: () => Promise<"pong">;
     };
   }
 }

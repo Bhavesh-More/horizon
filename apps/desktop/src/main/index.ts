@@ -1,10 +1,18 @@
 import { app, BrowserWindow, ipcMain } from "electron";
 import path from "node:path";
+import {
+  AppPingRequestSchema,
+  AppPingResponseSchema,
+} from "@horizon/shared-types";
+import { runMigrations } from "./db/migrate";
 
 function createWindow() {
   const win = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    width: 980,
+    height: 700,
+    minWidth: 980,
+    maxWidth: 980,
+    minHeight: 600,
     webPreferences: {
       preload: path.join(__dirname, "../preload/index.js"),
       contextIsolation: true,
@@ -19,9 +27,15 @@ function createWindow() {
   }
 }
 
-ipcMain.handle("app:ping", () => "pong");
+ipcMain.handle("app:ping", (_event, payload: unknown) => {
+  AppPingRequestSchema.parse(payload);
+  return AppPingResponseSchema.parse("pong");
+});
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  runMigrations();
+  createWindow();
+});
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();

@@ -10,6 +10,7 @@ export default defineConfig({
         input: {
           index: resolve(__dirname, "src/main/index.ts"),
           "scan.worker": resolve(__dirname, "src/main/workers/scan.worker.ts"),
+          "hash.worker": resolve(__dirname, "src/main/workers/hash.worker.ts"),
         },
       },
     },

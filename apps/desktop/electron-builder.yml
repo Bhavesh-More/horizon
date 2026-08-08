@@ -1,5 +1,6 @@
 appId: com.horizon.app
 productName: Horizon
+electronVersion: 43.3.0
 directories:
   output: release
 files:

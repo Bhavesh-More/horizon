@@ -15,7 +15,7 @@ Living document. Updated as work is completed — mark a checkbox only when a ph
 
 ## At a glance
 
-**Current phase:** Phase 2 — Deletion safety core
+**Current phase:** Phase 4 — Unused files
 **MVP checkpoint (Phases 0–5) reached:** ☐
 **Track-ready build (Phases 0–11) reached:** ☐
 **Full scope (Phases 0–15) reached:** ☐
@@ -54,28 +54,28 @@ Living document. Updated as work is completed — mark a checkbox only when a ph
 
 ## Phase 2 — Deletion safety core
 
-- [ ] `deletion-policy.ts` — two-tier allow/block engine
-- [ ] `trash.ts` — sole file-removal call site, wrapping `trash` (npm)
-- [ ] `cleanup_actions` table
-- [ ] IPC: `cleanup:trash`, re-validated server-side
-- [ ] Shared confirmation-modal component in `packages/ui`
+- [x] `deletion-policy.ts` — two-tier allow/block engine
+- [x] `trash.ts` — sole file-removal call site, wrapping Electron `shell.trashItem()`
+- [x] `cleanup_actions` table
+- [x] IPC: `cleanup:trash`, re-validated server-side
+- [x] Shared confirmation-modal component in `packages/ui`
 
 **Exit criteria:** given hand-picked `file_index` ids, the app can safely move them to OS trash, log a correct `cleanup_actions` row, and mark source rows `removed_at`.
-**Status notes:**
+**Status notes:** Phase 2 implementation complete. Single sanctioned trash path wrapping built-in Electron `shell.trashItem()`, server-side policy engine with `fs.realpath` symlink resolution and `path.sep` boundary checks, Drizzle `cleanup_actions` audit log table with indexed `performed_at`, contract-validated IPC `cleanup:trash`, and Radix AlertDialog `ConfirmationModal` primitive in `packages/ui`. All 15 unit tests passing.
 
 ---
 
 ## Phase 3 — Duplicate detection (exact + perceptual)
 
-- [ ] `hashing.ts` in `hash.worker.ts`: SHA-256 exact-match hashing above size threshold
-- [ ] Perceptual hashing for images (`sharp` + `blockhash-core`), clustering near-matches
-- [ ] `duplicate_groups` / `duplicate_group_members` tables
-- [ ] Auto-trigger after scan completion
-- [ ] IPC: `duplicates:list`
-- [ ] Duplicates tab: grouped display, default "keep newest" selection, thumbnails, wired to trash flow
+- [x] `hashing.ts` in `hash.worker.ts`: SHA-256 exact-match hashing above size threshold
+- [x] Perceptual hashing for images (`sharp` + `blockhash-core`), clustering near-matches
+- [x] `duplicate_groups` / `duplicate_group_members` tables
+- [x] Auto-trigger after scan completion
+- [x] IPC: `duplicates:list`
+- [x] Duplicates tab: grouped display, default "keep newest" selection, thumbnails, wired to trash flow
 
 **Exit criteria:** a folder with known exact duplicates and known near-identical images produces correct groups, reclaimable-space totals are right, trashing a selection updates the group and writes to `cleanup_actions`.
-**Status notes:**
+**Status notes:** Phase 3 implementation and duplicate detection pipeline fixes complete. Resolved tab-switching UI resets via persistent component mounting in `App.tsx` and atomic DB group updates in `hashing.ts`. Resolved non-PNG duplicate detection issue by optimizing worker stream concurrency and adding format-agnostic SHA-256 candidate processing across all categories (`document`, `video`, `audio`, `archive`, `dev_artifact`, `other`, `image`). All 21 unit tests passing cleanly.
 
 ---
 
@@ -230,11 +230,12 @@ Living document. Updated as work is completed — mark a checkbox only when a ph
 
 Re-verify these whenever the phase that introduces or touches them is marked done — see `architecture.md` §6 and `code-standards.md` §9 for full definitions.
 
-- [ ] I-1–I-4 (destructive-action safety) — checked at Phase 2, and re-checked at every phase adding a new Trash/Archive button (3, 4, 5, 11)
+- [x] I-1–I-4 (destructive-action safety) — checked at Phase 2, and re-checked at every phase adding a new Trash/Archive button (3, 4, 5, 11)
 - [ ] I-5–I-7 (privacy & secrets) — checked at Phase 6, and re-checked at every phase adding a new LLM call (7, 9, 10)
 - [ ] I-8–I-10 (architectural boundaries) — continuous, enforced via lint/review from Phase 0 onward
 - [ ] I-11 (migrations) — checked on every schema change, any phase
 - [ ] I-12 (worker threads) — checked at Phases 1 and 3
 - [ ] I-13 (no double-counted bytes) — checked at Phases 1 and 8
-- [ ] I-14 (audit log integrity) — checked from Phase 2 onward, verified end-to-end at Phase 12
-- [ ] I-15 (IPC payload validation) — checked on every new IPC channel, any phase
+- [x] I-14 (audit log integrity) — checked from Phase 2 onward, verified end-to-end at Phase 12
+- [x] I-15 (IPC payload validation) — checked on every new IPC channel, any phase
+

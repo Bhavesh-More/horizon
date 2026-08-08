@@ -6,6 +6,9 @@ import {
 } from "@horizon/shared-types";
 import { runMigrations } from "./db/migrate";
 import { registerScanIpc } from "./ipc/scan";
+import { registerCleanupIpc } from "./ipc/cleanup";
+import { registerDuplicatesIpc } from "./ipc/duplicates";
+
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -37,6 +40,8 @@ ipcMain.handle("app:ping", (_event, payload: unknown) => {
 app.whenReady().then(() => {
   runMigrations();
   registerScanIpc();
+  registerCleanupIpc();
+  registerDuplicatesIpc();
   createWindow();
 });
 

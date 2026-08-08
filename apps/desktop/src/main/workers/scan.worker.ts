@@ -11,14 +11,30 @@ interface StartMessage {
 
 const EXCLUDED_DIRS = new Set([
   ".git",
+  ".svn",
+  ".hg",
   ".Trash",
   ".Trashes",
   "System Volume Information",
   "$RECYCLE.BIN",
   ".Spotlight-V100",
   ".fseventsd",
-  ".cache/thumbnails",
-  "Library/Caches/com.apple.containermanagerd",
+  ".cache",
+  "node_modules",
+  ".venv",
+  "__pycache__",
+  ".next",
+  ".turbo",
+  ".cargo",
+  ".rustup",
+  ".gradle",
+  "vendor",
+  "dist",
+  "build",
+  ".npm",
+  ".yarn",
+  ".pnpm-store",
+  "Library/Caches",
 ]);
 
 function categorizeFile(filePath: string, ext: string): FileCategory {

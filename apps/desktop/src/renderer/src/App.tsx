@@ -12,6 +12,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { OverviewTab } from "./components/OverviewTab";
+import { DuplicatesTab } from "./components/DuplicatesTab";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("Overview");
@@ -64,7 +65,7 @@ export default function App() {
                 key={label}
                 type="button"
                 onClick={() => setActiveTab(label)}
-                className={`flex items-center gap-3 rounded-md px-3 py-2 text-left text-row transition-colors ${
+                className={`flex items-center gap-3 rounded-md px-3 py-2 text-left text-row transition-colors cursor-pointer ${
                   isActive
                     ? "bg-surface-secondary text-text-primary font-medium"
                     : "text-text-secondary hover:bg-surface-secondary hover:text-text-primary"
@@ -96,9 +97,13 @@ export default function App() {
 
       {/* Main Tab Content */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        {activeTab === "Overview" ? (
+        <div className={activeTab === "Overview" ? "h-full flex flex-col" : "hidden"}>
           <OverviewTab />
-        ) : (
+        </div>
+        <div className={activeTab === "Duplicates" ? "h-full flex flex-col" : "hidden"}>
+          <DuplicatesTab />
+        </div>
+        {activeTab !== "Overview" && activeTab !== "Duplicates" && (
           <div className="flex h-full flex-col">
             <header className="flex h-[72px] shrink-0 items-center justify-between border-b border-border bg-background px-6">
               <div>

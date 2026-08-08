@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, index } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, real, index, primaryKey } from "drizzle-orm/sqlite-core";
 
 export const scanRuns = sqliteTable("scan_runs", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -37,4 +37,47 @@ export const fileIndex = sqliteTable(
   })
 );
 
+export const cleanupActions = sqliteTable(
+  "cleanup_actions",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    actionType: text("action_type").notNull(),
+    filePathsJson: text("file_paths_json").notNull(),
+    bytesFreed: integer("bytes_freed").notNull(),
+    performedAt: text("performed_at").notNull(),
+    relatedArchiveId: integer("related_archive_id"),
+  },
+  (table) => ({
+    idxCleanupActionsPerformed: index("idx_cleanup_actions_performed").on(
+      table.performedAt
+    ),
+  })
+);
+
+export const duplicateGroups = sqliteTable("duplicate_groups", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  hashType: text("hash_type", {
+    enum: ["exact", "perceptual", "embedding"],
+  }).notNull(),
+  representativeHash: text("representative_hash").notNull(),
+  totalSizeBytes: integer("total_size_bytes").notNull(),
+  memberCount: integer("member_count").notNull(),
+  createdAt: text("created_at").notNull(),
+});
+
+export const duplicateGroupMembers = sqliteTable(
+  "duplicate_group_members",
+  {
+    groupId: integer("group_id")
+      .notNull()
+      .references(() => duplicateGroups.id, { onDelete: "cascade" }),
+    fileId: integer("file_id")
+      .notNull()
+      .references(() => fileIndex.id, { onDelete: "cascade" }),
+    similarityScore: real("similarity_score"),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.groupId, table.fileId] }),
+  })
+);
 

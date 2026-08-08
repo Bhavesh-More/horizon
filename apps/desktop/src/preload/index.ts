@@ -4,6 +4,8 @@ import {
   AppPingResponseSchema,
   ScanStartRequest,
   ScanProgressEvent,
+  CleanupTrashRequestSchema,
+  DuplicateDetectionProgressSchema,
 } from "@horizon/shared-types";
 
 contextBridge.exposeInMainWorld("horizon", {
@@ -24,9 +26,8 @@ contextBridge.exposeInMainWorld("horizon", {
     },
     onProgress: (callback: (event: ScanProgressEvent) => void) => {
       const listener = (_event: IpcRendererEvent, data: unknown) => {
-        const parsed = ScanProgressEvent.safeParse(data);
-        if (parsed.success) {
-          callback(parsed.data);
+        if (data && typeof data === "object" && "event" in (data as any)) {
+          callback(data as ScanProgressEvent);
         }
       };
       ipcRenderer.on("scan:progress", listener);
@@ -35,5 +36,36 @@ contextBridge.exposeInMainWorld("horizon", {
       };
     },
   },
+  cleanup: {
+    trash: async (fileIds: number[]) => {
+      const payload = CleanupTrashRequestSchema.parse({ fileIds });
+      return await ipcRenderer.invoke("cleanup:trash", payload);
+    },
+  },
+  duplicates: {
+    list: async (scanRunId?: number, hashType?: string) => {
+      const cleanType = !hashType || hashType === "all" ? undefined : hashType;
+      return await ipcRenderer.invoke("duplicates:list", { scanRunId, hashType: cleanType });
+    },
+    start: async (scanRunId?: number) => {
+      return await ipcRenderer.invoke("duplicates:start", scanRunId);
+    },
+    isRunning: async () => {
+      return await ipcRenderer.invoke("duplicates:isRunning");
+    },
+    onProgress: (callback: (event: any) => void) => {
+      const listener = (_event: IpcRendererEvent, data: unknown) => {
+        if (data && typeof data === "object" && "event" in (data as any)) {
+          callback(data);
+        }
+      };
+      ipcRenderer.on("duplicates:progress", listener);
+      return () => {
+        ipcRenderer.removeListener("duplicates:progress", listener);
+      };
+    },
+  },
 });
+
+
 

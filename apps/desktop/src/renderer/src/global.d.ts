@@ -1,4 +1,10 @@
-import { GetLatestScanResponse, ScanProgressEvent } from "@horizon/shared-types";
+import {
+  GetLatestScanResponse,
+  ScanProgressEvent,
+  CleanupTrashResponse,
+  DuplicatesListResponse,
+  DuplicateDetectionProgress,
+} from "@horizon/shared-types";
 
 export {};
 declare global {
@@ -10,7 +16,18 @@ declare global {
         getLatest: () => Promise<{ ok: boolean; data?: GetLatestScanResponse; error?: any }>;
         onProgress: (callback: (event: ScanProgressEvent) => void) => () => void;
       };
+      cleanup: {
+        trash: (fileIds: number[]) => Promise<{ ok: boolean; data?: CleanupTrashResponse; error?: any }>;
+      };
+      duplicates: {
+        list: (scanRunId?: number, hashType?: string) => Promise<{ ok: boolean; data?: DuplicatesListResponse; error?: any }>;
+        start: (scanRunId?: number) => Promise<{ ok: boolean; data?: { groupsCount: number }; error?: any }>;
+        isRunning: () => Promise<{ ok: boolean; data?: boolean }>;
+        onProgress: (callback: (event: DuplicateDetectionProgress) => void) => () => void;
+      };
     };
   }
 }
+
+
 

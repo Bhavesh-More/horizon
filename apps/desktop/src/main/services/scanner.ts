@@ -12,9 +12,10 @@ import { Worker } from "node:worker_threads";
 import path from "node:path";
 import os from "node:os";
 import { BrowserWindow } from "electron";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, ne, and, or, like, isNotNull } from "drizzle-orm";
 import { db } from "../db/client";
 import { scanRuns, fileIndex } from "../db/schema";
+import { runDuplicateDetection } from "./hashing";
 import {
   FileItem,
   GetLatestScanResponse,
@@ -39,7 +40,8 @@ function broadcastProgress(event: ScanProgressEvent) {
 
 function flushIpcBatch(scanRunId: number) {
   if (pendingIpcBatch.length === 0) return;
-  const filesToSend = [...pendingIpcBatch];
+  // Keep up to 50 recent files for renderer live feed preview to avoid IPC serialization overhead
+  const filesToSend = pendingIpcBatch.slice(-50);
   pendingIpcBatch = [];
   broadcastProgress({
     event: "batch",
@@ -154,64 +156,107 @@ export async function startScan(scope: string[]): Promise<{ scanRunId: number }>
 
   let dbBuffer: FileItem[] = [];
 
-  worker.on("message", async (msg: ScanProgressEvent) => {
-    if (msg.event === "batch" && msg.files) {
-      dbBuffer.push(...msg.files);
+  let messageQueue = Promise.resolve();
 
-      // Queue for throttled IPC emission
-      queueIpcFiles(scanRunId, msg.files);
+  worker.on("message", (msg: ScanProgressEvent) => {
+    messageQueue = messageQueue
+      .then(async () => {
+        if (msg.event === "batch" && msg.files) {
+          dbBuffer.push(...msg.files);
 
-      // Bulk insert into SQLite when buffer reaches 500 items
-      if (dbBuffer.length >= 500) {
-        const toInsert = [...dbBuffer];
-        dbBuffer = [];
-        await bulkInsertFiles(scanRunId, toInsert);
-      }
-    } else if (msg.event === "found" && msg.file) {
-      dbBuffer.push(msg.file);
-      queueIpcFiles(scanRunId, [msg.file]);
+          // Queue for throttled IPC emission
+          queueIpcFiles(scanRunId, msg.files);
 
-      if (dbBuffer.length >= 500) {
-        const toInsert = [...dbBuffer];
-        dbBuffer = [];
-        await bulkInsertFiles(scanRunId, toInsert);
-      }
-    } else if (msg.event === "complete") {
-      // Flush remaining DB & IPC items
-      if (dbBuffer.length > 0) {
-        const toInsert = [...dbBuffer];
-        dbBuffer = [];
-        await bulkInsertFiles(scanRunId, toInsert);
-      }
+          // Bulk insert into SQLite when buffer reaches 500 items
+          if (dbBuffer.length >= 500) {
+            const toInsert = [...dbBuffer];
+            dbBuffer = [];
+            await bulkInsertFiles(scanRunId, toInsert);
+          }
+        } else if (msg.event === "found" && msg.file) {
+          dbBuffer.push(msg.file);
+          queueIpcFiles(scanRunId, [msg.file]);
 
-      if (ipcThrottleTimer) {
-        clearTimeout(ipcThrottleTimer);
-        ipcThrottleTimer = null;
-      }
-      flushIpcBatch(scanRunId);
+          if (dbBuffer.length >= 500) {
+            const toInsert = [...dbBuffer];
+            dbBuffer = [];
+            await bulkInsertFiles(scanRunId, toInsert);
+          }
+        } else if (msg.event === "complete") {
+          // Flush remaining DB & IPC items
+          if (dbBuffer.length > 0) {
+            const toInsert = [...dbBuffer];
+            dbBuffer = [];
+            await bulkInsertFiles(scanRunId, toInsert);
+          }
 
-      const summary = msg.summary;
-      const completedAt = new Date().toISOString();
+          if (ipcThrottleTimer) {
+            clearTimeout(ipcThrottleTimer);
+            ipcThrottleTimer = null;
+          }
+          flushIpcBatch(scanRunId);
 
-      await db
-        .update(scanRuns)
-        .set({
-          completedAt,
-          status: "complete",
-          totalFiles: summary?.totalFiles || 0,
-          totalBytes: summary?.totalBytes || 0,
-        })
-        .where(eq(scanRuns.id, scanRunId));
+          // ── Prune stale files ──────────────────────────────────────────────
+          // Mark any file_index row whose path falls within the scanned scope
+          // but was NOT touched by this scan run as removed. This prevents the
+          // database from accumulating phantom files from past scans that no
+          // longer exist on disk (or were never in the current scope).
+          try {
+            const pruneAt = new Date().toISOString();
+            // Build OR conditions: one LIKE clause per scope root
+            const scopeConditions = resolvedScope.map((scopeRoot) =>
+              like(fileIndex.path, `${scopeRoot}%`)
+            );
+            const scopeFilter = scopeConditions.length === 1
+              ? scopeConditions[0]
+              : or(...scopeConditions);
 
-      broadcastProgress({
-        event: "complete",
-        scanRunId,
-        summary,
+            const pruneResult = await db
+              .update(fileIndex)
+              .set({ removedAt: pruneAt })
+              .where(
+                and(
+                  ne(fileIndex.scanRunId, scanRunId),
+                  scopeFilter!
+                )
+              )
+              .returning({ id: fileIndex.id });
+
+            console.log(`[scanner] Pruned ${pruneResult.length} stale file_index rows that were not found in scan run #${scanRunId}.`);
+          } catch (pruneErr) {
+            console.error("[scanner] Failed to prune stale file_index rows:", pruneErr);
+          }
+
+          const summary = msg.summary;
+          const completedAt = new Date().toISOString();
+
+          await db
+            .update(scanRuns)
+            .set({
+              completedAt,
+              status: "complete",
+              totalFiles: summary?.totalFiles || 0,
+              totalBytes: summary?.totalBytes || 0,
+            })
+            .where(eq(scanRuns.id, scanRunId));
+
+          broadcastProgress({
+            event: "complete",
+            scanRunId,
+            summary,
+          });
+
+          currentWorker = null;
+          currentScanRunId = null;
+
+          // Auto-trigger duplicate detection after scan completion and full DB commit
+          console.log(`[scanner] Storage scan complete. All file_index rows committed to DB. Triggering duplicate detection...`);
+          await runDuplicateDetection(scanRunId);
+        }
+      })
+      .catch((err) => {
+        console.error("[scanner] Error processing scan message queue:", err);
       });
-
-      currentWorker = null;
-      currentScanRunId = null;
-    }
   });
 
   worker.on("error", async (error) => {

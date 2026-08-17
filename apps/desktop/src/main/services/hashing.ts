@@ -11,6 +11,10 @@ import {
   DuplicatesListResponse,
   DuplicateDetectionProgress,
 } from "@horizon/shared-types";
+import {
+  clusterDocumentEmbeddings,
+  ClusteredEmbeddingGroup,
+} from "./embeddings";
 
 // ---------------------------------------------------------------------------
 // Singleton detection lock — prevents concurrent runs
@@ -183,7 +187,9 @@ export async function runDuplicateDetection(
         id: fileIndex.id,
         path: fileIndex.path,
         sizeBytes: fileIndex.sizeBytes,
+        extension: fileIndex.extension,
         category: fileIndex.category,
+        createdAt: fileIndex.createdAt,
         modifiedAt: fileIndex.modifiedAt,
       })
       .from(fileIndex)
@@ -307,6 +313,42 @@ export async function runDuplicateDetection(
       }
     }
 
+    // ── STEP 3: SEMANTIC DOCUMENT EMBEDDINGS ───────────────────────────
+    throttledProgress({
+      event: "progress",
+      phase: "embedding",
+      processedFiles: 0,
+      totalFiles: activeFiles.length,
+    });
+
+    const documentCandidates = activeFiles.map((f) => ({
+      fileId: f.id,
+      path: f.path,
+      sizeBytes: f.sizeBytes,
+      extension: f.extension,
+      category: f.category,
+      modifiedAt: f.modifiedAt,
+      createdAt: f.createdAt,
+    }));
+
+    let embeddingGroups: ClusteredEmbeddingGroup[] = [];
+    try {
+      embeddingGroups = await clusterDocumentEmbeddings(
+        documentCandidates,
+        0.85,
+        (processed, total) => {
+          throttledProgress({
+            event: "progress",
+            phase: "embedding",
+            processedFiles: processed,
+            totalFiles: total,
+          });
+        }
+      );
+    } catch (embErr) {
+      console.warn("[hashing] Semantic embedding clustering skipped or failed:", embErr);
+    }
+
     // ── ATOMIC DATABASE UPDATE ───────────────────────────────────────────
     // Atomically replace old duplicate groups and members in a single transaction
     const nowIso = new Date().toISOString();
@@ -315,6 +357,7 @@ export async function runDuplicateDetection(
 
     let exactGroupsCreated = 0;
     let perceptualGroupsCreated = 0;
+    let embeddingGroupsCreated = 0;
 
     db.transaction((tx) => {
       // Clear old results atomically right before inserting fresh results
@@ -363,10 +406,39 @@ export async function runDuplicateDetection(
           perceptualGroupsCreated++;
         }
       }
+
+      // Insert Semantic Embedding Groups
+      for (const embGroup of embeddingGroups) {
+        if (embGroup.members.length < 2) continue;
+        const createdGroup = tx
+          .insert(duplicateGroups)
+          .values({
+            hashType: "embedding",
+            representativeHash: embGroup.representativeHash,
+            totalSizeBytes: embGroup.totalSizeBytes,
+            memberCount: embGroup.memberCount,
+            createdAt: nowIso,
+          })
+          .returning()
+          .get();
+
+        if (createdGroup) {
+          tx.insert(duplicateGroupMembers)
+            .values(
+              embGroup.members.map((m) => ({
+                groupId: createdGroup.id,
+                fileId: m.fileId,
+                similarityScore: m.similarityScore,
+              }))
+            )
+            .run();
+          embeddingGroupsCreated++;
+        }
+      }
     });
 
-    totalGroups = exactGroupsCreated + perceptualGroupsCreated;
-    console.log(`[hashing] Duplicate detection complete. Created ${exactGroupsCreated} exact groups and ${perceptualGroupsCreated} perceptual groups (${totalGroups} total groups).`);
+    totalGroups = exactGroupsCreated + perceptualGroupsCreated + embeddingGroupsCreated;
+    console.log(`[hashing] Duplicate detection complete. Created ${exactGroupsCreated} exact groups, ${perceptualGroupsCreated} perceptual groups, and ${embeddingGroupsCreated} embedding groups (${totalGroups} total groups).`);
     return { groupsCount: totalGroups };
   } catch (err) {
     console.error("[hashing] Detection failed:", err);

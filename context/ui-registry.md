@@ -150,7 +150,7 @@ Keep the `Classes` block to the actual, real `className` strings from the compon
   <div className="overflow-hidden rounded-md border border-border bg-surface [content-visibility:auto] [contain-intrinsic-size:0_80px] transition-colors duration-150 hover:border-border/80">
   ```
 - **Tokens used:** `surface`, `surface-secondary`, `border`, `text-primary`, `text-secondary`, `text-tertiary`, `tag-safe-text`, `tag-safe-bg`, `tag-check-bg`, `tag-check-text`, `radius-md`
-- **Notes:** Expandable duplicate group card displaying member items, similarity badges, recommended keep selections, and individual item checkbox toggles. Wrapped in `React.memo` with custom `arePropsEqual` comparator and `content-visibility: auto` layout virtualization.
+- **Notes:** Expandable duplicate group card displaying member items, exact / perceptual / embedding similarity badges (with % match), recommended keep selections, and individual item checkbox toggles. Wrapped in `React.memo` with custom `arePropsEqual` comparator and `content-visibility: auto` layout virtualization.
 
 ### DuplicatesTab
 
@@ -162,7 +162,7 @@ Keep the `Classes` block to the actual, real `className` strings from the compon
   <div className="flex h-full flex-col overflow-hidden bg-background">
   ```
 - **Tokens used:** `background`, `surface`, `surface-secondary`, `border`, `text-primary`, `text-secondary`, `text-tertiary`, `tag-danger-bg`, `tag-danger-text`, `btn-primary-bg`, `btn-primary-text`
-- **Notes:** Full tab interface for browsing exact & near-duplicate groups, filtering by hash type, monitoring real-time detection progress streaming, managing file selection, and triggering batch deletion via `ConfirmationModal`. Wrapped in `React.memo`.
+- **Notes:** Full tab interface for browsing exact, near-duplicate image, and semantic document embedding groups, filtering by hash type (All, Exact Match, Near-Duplicate Images, Semantic Documents), monitoring real-time detection progress streaming, managing file selection, and triggering batch deletion via `ConfirmationModal`. Wrapped in `React.memo`.
 
 ### OverviewTab
 
@@ -204,4 +204,42 @@ Keep the `Classes` block to the actual, real `className` strings from the compon
   ```
 - **Tokens used:** `background`, `surface`, `surface-secondary`, `border`, `text-primary`, `text-secondary`, `text-tertiary`, `tag-danger-bg`, `tag-danger-text`, `btn-primary-bg`, `btn-primary-text`, `storage-free`, `text-title`, `text-row`, `text-meta`, `radius-md`, `radius-xs`
 - **Notes:** Complete interface for browsing and filtering unused files by staleness threshold slider (30–730 days) and category chips. Supports multi-selection, select/deselect all, and batch safe removal through `ConfirmationModal`. Wrapped in `React.memo`.
+
+### LargeFilesTab
+
+- **Path:** `apps/desktop/src/renderer/src/components/LargeFilesTab.tsx`
+- **Used by:** App main view (`activeTab === "Large Files"`)
+- **Props:** None
+- **Classes:**
+  ```tsx
+  <div className="flex h-full flex-col overflow-hidden bg-background">
+  ```
+- **Tokens used:** `background`, `surface`, `surface-secondary`, `border`, `text-primary`, `text-secondary`, `text-tertiary`, `tag-danger-bg`, `tag-danger-text`, `btn-primary-bg`, `btn-primary-text`, `text-title`, `text-row`, `text-meta`, `radius-md`, `radius-xs`
+- **Notes:** Large files browser supporting size preset buttons (5 MB to 1 GB+), category chips, multi-column sorting (size, date, name), native reveal in OS file manager, multi-select, and batch safe removal via `ConfirmationModal`. Wrapped in `React.memo`.
+
+### SettingsTab
+
+- **Path:** `apps/desktop/src/renderer/src/components/SettingsTab.tsx`
+- **Used by:** App main view (`activeTab === "Settings"`)
+- **Props:** None
+- **Classes:**
+  ```tsx
+  <div className="flex h-full flex-col overflow-hidden bg-background">
+  ```
+- **Tokens used:** `background`, `surface`, `surface-secondary`, `border`, `text-primary`, `text-secondary`, `text-tertiary`, `tag-safe-bg`, `tag-safe-text`, `tag-check-bg`, `tag-check-text`, `tag-danger-bg`, `tag-danger-text`, `tag-unsure-bg`, `tag-unsure-text`, `btn-primary-bg`, `btn-primary-text`, `btn-secondary-border`, `text-title`, `text-row`, `text-meta`, `radius-md`, `radius-sm`, `radius-xs`
+- **Notes:** Interactive settings panel providing multi-provider AI engine selection (Ollama, OpenAI, etc.), local model discovery, secure key storage management via OS safeStorage, connection probe testing, and theme toggling. Wrapped in `React.memo`.
+
+### ForecastTab
+
+- **Path:** `apps/desktop/src/renderer/src/components/ForecastTab.tsx`
+- **Used by:** App main view (`activeTab === "Forecast"`)
+- **Props:**
+  - `onNavigateToTab?: (tabName: string, filter?: string) => void`
+- **Classes:**
+  ```tsx
+  <div className="flex h-full flex-col overflow-hidden bg-background">
+  ```
+- **Tokens used:** `background`, `surface`, `surface-secondary`, `border`, `text-primary`, `text-secondary`, `text-tertiary`, `storage-used`, `storage-free`, `btn-primary-bg`, `btn-primary-text`, `tag-safe-bg`, `tag-safe-text`, `tag-danger-bg`, `tag-danger-text`, `tag-unsure-bg`, `tag-unsure-text`, `text-title`, `text-row`, `text-meta`, `text-meta-emphasis`, `radius-lg`, `radius-md`, `radius-xs`
+- **Notes:** Dedicated storage forecasting interface featuring a Recharts ComposedChart with actual usage line, Theil-Sen projected trend, and 90% confidence envelope area; per-category monthly growth rate breakdown; and an interactive What-If Cleanup Simulator with instant runway calculation (+X days) and "Apply this plan" deep-links. Wrapped in `React.memo`.
+
 

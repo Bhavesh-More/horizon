@@ -71,6 +71,53 @@ contextBridge.exposeInMainWorld("horizon", {
       return await ipcRenderer.invoke("unused-files:list", { thresholdDays, category: cleanCategory, scanRunId });
     },
   },
+  largeFiles: {
+    list: async (options?: {
+      minSizeBytes?: number;
+      category?: string;
+      sortBy?: "size" | "date" | "name";
+      sortOrder?: "asc" | "desc";
+      limit?: number;
+      scanRunId?: number;
+    }) => {
+      const cleanCategory =
+        !options?.category || options.category === "all" ? undefined : options.category;
+      return await ipcRenderer.invoke("large-files:list", {
+        ...options,
+        category: cleanCategory,
+      });
+    },
+  },
+  system: {
+    showInFolder: async (path: string) => {
+      return await ipcRenderer.invoke("system:showInFolder", { path });
+    },
+  },
+  aiProvider: {
+    getStatus: async () => {
+      return await ipcRenderer.invoke("ai-provider:getStatus");
+    },
+    listOllamaModels: async () => {
+      return await ipcRenderer.invoke("ai-provider:listOllamaModels");
+    },
+    configure: async (payload: unknown) => {
+      return await ipcRenderer.invoke("ai-provider:configure", payload);
+    },
+    select: async (provider: string) => {
+      return await ipcRenderer.invoke("ai-provider:select", { provider });
+    },
+    test: async (payload: unknown) => {
+      return await ipcRenderer.invoke("ai-provider:test", payload);
+    },
+  },
+  forecast: {
+    get: async (category?: string) => {
+      return await ipcRenderer.invoke("forecast:get", { category });
+    },
+    whatIf: async (adjustments: Array<{ category: string; bytesToRemove: number }>) => {
+      return await ipcRenderer.invoke("forecast:whatIf", { adjustments });
+    },
+  },
 });
 
 

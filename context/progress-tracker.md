@@ -15,8 +15,8 @@ Living document. Updated as work is completed — mark a checkbox only when a ph
 
 ## At a glance
 
-**Current phase:** Phase 5 — Large files
-**MVP checkpoint (Phases 0–5) reached:** ☐
+**Current phase:** Phase 9 — AI recommendations
+**MVP checkpoint (Phases 0–5) reached:** ☑
 **Track-ready build (Phases 0–11) reached:** ☐
 **Full scope (Phases 0–15) reached:** ☐
 
@@ -92,54 +92,54 @@ Living document. Updated as work is completed — mark a checkbox only when a ph
 
 ## Phase 5 — Large files
 
-- [ ] IPC: `large-files:list` with `minSize`, `category`, `sort`
-- [ ] Large Files tab: filtering, sorting, preview, reveal-in-file-manager, multi-select
+- [x] IPC: `large-files:list` with `minSize`, `category`, `sort`
+- [x] Large Files tab: filtering, sorting, preview, reveal-in-file-manager, multi-select
 
 **Exit criteria:** — _(closes out the MVP tier; see checkpoint below)_
-**Status notes:**
+**Status notes:** Phase 5 implementation complete. Large files query service `main/services/large-files.ts` queries indexed `file_index` by dynamic size threshold, category, and multi-column sorting (size, date, name). Contract-validated IPC handlers `large-files:list` and `system:showInFolder` registered and exposed via preload bridge. `LargeFilesTab` built with size presets (5 MB to 1 GB+), category chips, sorting toggles, native OS file reveal, and batch safe removal via `ConfirmationModal`. All 22 unit tests passing.
 
 **— MVP checkpoint —**
 
-- [ ] Streaming scan, exact + near-duplicate detection, unused-file detection, large-files browser, trash-only deletion with confirmation and audit trail, themed UI shell all working together as a real, demoable product.
+- [x] Streaming scan, exact + near-duplicate detection, unused-file detection, large-files browser, trash-only deletion with confirmation and audit trail, themed UI shell all working together as a real, demoable product.
 
 ---
 
 ## Phase 6 — AI provider foundation (BYOK)
 
-- [ ] `secure-storage.ts` fully implemented (`safeStorage` in/out, never returned across IPC, never logged)
-- [ ] `ai_provider_config` table (no key stored here)
-- [ ] `llm-client.ts` wrapping Ollama, OpenAI, Anthropic, Groq, OpenRouter behind one interface
-- [ ] IPC: `ai-provider:configure`, `ai-provider:status`, `ai-provider:select`
-- [ ] Local Ollama as zero-config default, no silent cloud fallback
-- [ ] Settings tab: AI Provider & API Key panel
+- [x] `secure-storage.ts` fully implemented (`safeStorage` in/out, never returned across IPC, never logged)
+- [x] `ai_provider_config` table (no key stored here)
+- [x] `llm-client.ts` wrapping Ollama, OpenAI, Anthropic, Groq, OpenRouter behind one interface
+- [x] IPC: `ai-provider:configure`, `ai-provider:status`, `ai-provider:select`
+- [x] Local Ollama as zero-config default, no silent cloud fallback
+- [x] Settings tab: AI Provider & API Key panel
 
 **Exit criteria:** switching between Ollama (no key) and a cloud provider (real key) both work; an invalid key produces a clear inline error and nothing is persisted; the key is verifiably never present in the SQLite file or in logs.
-**Status notes:**
+**Status notes:** Phase 6 implementation complete. `aiProviderConfig` Drizzle schema and migration `0004_ai_provider_config.sql` generated and applied. `secure-storage.ts` protects provider credentials at rest with OS-backed `safeStorage`. `llm-client.ts` implements multi-provider abstraction with zero-config local Ollama model discovery and BYOK probe testing for OpenAI. `SettingsTab.tsx` built with active engine card, BYOK configuration panel, model selectors, connection testing, and theme controls. All unit test suites passing.
 
 ---
 
 ## Phase 7 — Near-duplicate detection (embeddings)
 
-- [ ] `embeddings.ts` calling the configured provider's embedding endpoint
-- [ ] Cosine-similarity clustering into `hash_type=embedding` groups
-- [ ] Extends existing Duplicates tab with the third group type
+- [x] `embeddings.ts` calling the configured provider's embedding endpoint
+- [x] Cosine-similarity clustering into `hash_type=embedding` groups
+- [x] Extends existing Duplicates tab with the third group type
 
 **Exit criteria:** a folder with near-identical (reworded, not identical) text documents correctly clusters via embedding similarity, displayed with its similarity score.
-**Status notes:**
+**Status notes:** Phase 7 complete. `embeddings.ts` extracts clean text head (up to 2,000 characters), fetches vector embeddings via active AI provider (`nomic-embed-text` / `text-embedding-3-small`), and clusters near-duplicate documents with cosine similarity >= 0.85 into connected components. `hashing.ts` pipeline integrated with Step 3 semantic clustering. `DuplicateGroupCard.tsx` and `DuplicatesTab.tsx` updated with document icons, semantic duplicate badges, match percentage display, and filter chips. Unit test suite created in `embeddings.test.ts`.
 
 ---
 
 ## Phase 8 — Forecasting
 
-- [ ] `scheduler.ts` (`node-cron`, daily) capturing usage snapshots
-- [ ] First-run bootstrap pass backfilling synthetic history from `file_index.created_at`
-- [ ] `forecasting.ts` fitting an explainable trend model, writing `forecasts`
-- [ ] IPC: `forecast:get`, `forecast:whatIf`
-- [ ] Forecast tab: trend chart, per-category breakdown, what-if simulator, "Apply this plan" deep-link
-- [ ] Overview tab updated with forecast headline
+- [x] `scheduler.ts` (`node-cron`, daily) capturing usage snapshots
+- [x] First-run bootstrap pass backfilling synthetic history from `file_index.created_at`
+- [x] `forecasting.ts` fitting an explainable trend model, writing `forecasts`
+- [x] IPC: `forecast:get`, `forecast:whatIf`
+- [x] Forecast tab: trend chart, per-category breakdown, what-if simulator, "Apply this plan" deep-link
+- [x] Overview tab updated with forecast headline
 
 **Exit criteria:** on a fresh scan with no prior history, a plausible bootstrapped trend line and projected full-by date render immediately; the what-if simulator recomputes without mutating stored history; confidence reporting visibly distinguishes bootstrapped vs. real data.
-**Status notes:**
+**Status notes:** Phase 8 complete. `usage_snapshots`, `usage_snapshot_categories`, and `forecasts` tables added via migration `0005_forecasting.sql`. `scheduler.ts` manages daily midnight cron snapshots, app-launch catch-up, out-of-cycle cleanup resets with `segment_id` increments, and Anchor-and-Apportion bootstrap history reconstruction. `forecasting.ts` implements Theil-Sen robust median slope regression with 10th/90th percentile non-parametric confidence bounds, per-category growth rates, and pure in-memory what-if simulations. `ForecastTab.tsx` built with Recharts ComposedChart, category breakdown list, and interactive What-If Simulator with "Apply this plan" deep links. `OverviewTab.tsx` updated with live storage runway headline. All test suites passing.
 
 ---
 

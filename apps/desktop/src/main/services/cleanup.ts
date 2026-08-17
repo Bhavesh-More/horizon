@@ -111,6 +111,21 @@ export async function processTrashCleanup(fileIds: number[]): Promise<CleanupTra
       bytesFreed: freedBytes,
       performedAt: nowIso,
     });
+
+    // 6. Notify scheduler of cleanup action to increment segment IDs
+    const affectedCategories = Array.from(
+      new Set(
+        targetFiles
+          .filter((f) => successfulFileIds.includes(f.id))
+          .map((f) => f.category)
+      )
+    );
+    try {
+      const { notifyCleanupAction } = await import("./scheduler");
+      notifyCleanupAction(affectedCategories);
+    } catch (e) {
+      console.warn("Failed to notify scheduler of cleanup action:", e);
+    }
   }
 
   const trashedCount = successfulFileIds.length;

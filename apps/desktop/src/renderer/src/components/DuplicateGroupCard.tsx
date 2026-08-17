@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ChevronDown, ChevronRight, Check, Sparkles, Files, Image as ImageIcon } from "lucide-react";
+import { ChevronDown, ChevronRight, Check, Sparkles, Files, Image as ImageIcon, FileText } from "lucide-react";
 import { SafetyTagPill, SafetyTier } from "@horizon/ui";
 import { DuplicateGroup, DuplicateGroupMember } from "@horizon/shared-types";
 
@@ -30,7 +30,8 @@ export const DuplicateGroupCard = React.memo(
     const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
     const isExact = group.hashType === "exact";
-    const Icon = isExact ? Files : ImageIcon;
+    const isEmbedding = group.hashType === "embedding";
+    const Icon = isExact ? Files : isEmbedding ? FileText : ImageIcon;
 
     return (
       <div className="overflow-hidden rounded-md border border-border bg-surface [content-visibility:auto] [contain-intrinsic-size:0_80px] transition-colors duration-150 hover:border-border/80">
@@ -62,7 +63,11 @@ export const DuplicateGroupCard = React.memo(
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-row font-semibold text-text-primary">
-                  {isExact ? "Exact Match Group" : "Near-Duplicate Group"}
+                  {isExact
+                    ? "Exact Match Group"
+                    : isEmbedding
+                    ? "Semantic Duplicate Group"
+                    : "Near-Duplicate Image Group"}
                 </span>
                 <span className="rounded-xs bg-surface-secondary px-1.5 py-0.5 text-meta font-medium uppercase text-text-secondary">
                   {group.hashType}
@@ -70,7 +75,7 @@ export const DuplicateGroupCard = React.memo(
                 {!isExact && group.members.length > 0 && (
                   <span className="flex items-center gap-1 rounded-xs bg-tag-check-bg px-1.5 py-0.5 text-meta font-medium text-tag-check-text">
                     <Sparkles className="h-3 w-3" />
-                    {Math.round((group.members[1]?.similarityScore || 0.95) * 100)}% visual similarity
+                    {Math.round((group.members[1]?.similarityScore || 0.85) * 100)}% {isEmbedding ? "semantic match" : "visual similarity"}
                   </span>
                 )}
               </div>

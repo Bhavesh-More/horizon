@@ -29,6 +29,20 @@
       "when": 1786176000000,
       "tag": "0003_cleanup_actions",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1786177000000,
+      "tag": "0004_ai_provider_config",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1786178000000,
+      "tag": "0005_forecasting",
+      "breakpoints": true
     }
   ]
 }

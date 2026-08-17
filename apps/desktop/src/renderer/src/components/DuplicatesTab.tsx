@@ -14,11 +14,11 @@ function formatBytes(bytes: number): string {
 
 export const DuplicatesTab = React.memo(function DuplicatesTab() {
   const [groups, setGroups] = useState<DuplicateGroup[]>([]);
-  const [filterType, setFilterType] = useState<"all" | "exact" | "perceptual">("all");
+  const [filterType, setFilterType] = useState<"all" | "exact" | "perceptual" | "embedding">("all");
   const [isLoading, setIsLoading] = useState(false);
   const [isDetecting, setIsDetecting] = useState(false);
   const [detectionProgress, setDetectionProgress] = useState<{
-    phase?: "exact" | "perceptual";
+    phase?: "exact" | "perceptual" | "embedding";
     processedFiles?: number;
     totalFiles?: number;
   }>({});
@@ -37,7 +37,7 @@ export const DuplicatesTab = React.memo(function DuplicatesTab() {
   // ── Fetch duplicate groups ──────────────────────────────────────────────
   // Stable function — does not depend on filterType state directly,
   // reads it from the ref to avoid re-subscribing progress listener on filter changes.
-  const fetchDuplicates = useCallback(async (typeOverride?: "all" | "exact" | "perceptual") => {
+  const fetchDuplicates = useCallback(async (typeOverride?: "all" | "exact" | "perceptual" | "embedding") => {
     if (!window.horizon?.duplicates) return;
     const type = typeOverride ?? filterTypeRef.current;
     setIsLoading(true);
@@ -105,7 +105,7 @@ export const DuplicatesTab = React.memo(function DuplicatesTab() {
   }, [fetchDuplicates]); // fetchDuplicates is stable (no deps), so this runs only once
 
   // ── Filter change handler ────────────────────────────────────────────
-  const handleFilterChange = useCallback((type: "all" | "exact" | "perceptual") => {
+  const handleFilterChange = useCallback((type: "all" | "exact" | "perceptual" | "embedding") => {
     setFilterType(type);
     filterTypeRef.current = type;
     fetchDuplicates(type);
@@ -238,7 +238,7 @@ export const DuplicatesTab = React.memo(function DuplicatesTab() {
         <div className="flex items-center gap-3">
           {/* Filter Pills */}
           <div className="flex rounded-md border border-border bg-surface p-1 text-meta">
-            {(["all", "exact", "perceptual"] as const).map((type) => (
+            {(["all", "exact", "perceptual", "embedding"] as const).map((type) => (
               <button
                 key={type}
                 type="button"
@@ -249,7 +249,13 @@ export const DuplicatesTab = React.memo(function DuplicatesTab() {
                     : "text-text-secondary hover:text-text-primary"
                 }`}
               >
-                {type === "all" ? "All" : type === "exact" ? "Exact Match" : "Near-Duplicate Images"}
+                {type === "all"
+                  ? "All"
+                  : type === "exact"
+                  ? "Exact Match"
+                  : type === "perceptual"
+                  ? "Near-Duplicate Images"
+                  : "Semantic Documents"}
               </button>
             ))}
           </div>

@@ -47,7 +47,7 @@ export type DuplicatesListResponse = z.infer<typeof DuplicatesListResponseSchema
 /** Progress event for hashing calculation */
 export const DuplicateDetectionProgressSchema = z.object({
   event: z.enum(["started", "progress", "complete", "failed"]),
-  phase: z.enum(["exact", "perceptual"]).optional(),
+  phase: z.enum(["exact", "perceptual", "embedding"]).optional(),
   processedFiles: z.number().optional(),
   totalFiles: z.number().optional(),
   groupsFound: z.number().optional(),

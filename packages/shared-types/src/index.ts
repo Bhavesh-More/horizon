@@ -3,3 +3,6 @@ export * from "./scan";
 export * from "./cleanup";
 export * from "./duplicates";
 export * from "./unused-files";
+export * from "./large-files";
+export * from "./ai-provider";
+export * from "./forecast";

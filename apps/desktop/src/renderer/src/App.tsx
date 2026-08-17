@@ -14,6 +14,9 @@ import {
 import { OverviewTab } from "./components/OverviewTab";
 import { DuplicatesTab } from "./components/DuplicatesTab";
 import { UnusedFilesTab } from "./components/UnusedFilesTab";
+import { LargeFilesTab } from "./components/LargeFilesTab";
+import { SettingsTab } from "./components/SettingsTab";
+import { ForecastTab } from "./components/ForecastTab";
 
 const TABS = [
   { label: "Overview", icon: LayoutGrid },
@@ -108,7 +111,7 @@ export default function App() {
       {/* Main Tab Content */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <div className={activeTab === "Overview" ? "h-full flex flex-col" : "hidden"}>
-          <OverviewTab />
+          <OverviewTab onNavigateToTab={handleSelectTab} />
         </div>
         <div className={activeTab === "Duplicates" ? "h-full flex flex-col" : "hidden"}>
           <DuplicatesTab />
@@ -116,8 +119,22 @@ export default function App() {
         <div className={activeTab === "Unused Files" ? "h-full flex flex-col" : "hidden"}>
           <UnusedFilesTab />
         </div>
-        {activeTab !== "Overview" && activeTab !== "Duplicates" && activeTab !== "Unused Files" && (
-          <div className="flex h-full flex-col">
+        <div className={activeTab === "Large Files" ? "h-full flex flex-col" : "hidden"}>
+          <LargeFilesTab />
+        </div>
+        <div className={activeTab === "Forecast" ? "h-full flex flex-col" : "hidden"}>
+          <ForecastTab onNavigateToTab={handleSelectTab} />
+        </div>
+        <div className={activeTab === "Settings" ? "h-full flex flex-col" : "hidden"}>
+          <SettingsTab />
+        </div>
+        {activeTab !== "Overview" &&
+          activeTab !== "Duplicates" &&
+          activeTab !== "Unused Files" &&
+          activeTab !== "Large Files" &&
+          activeTab !== "Forecast" &&
+          activeTab !== "Settings" && (
+            <div className="flex h-full flex-col">
             <header className="flex h-[72px] shrink-0 items-center justify-between border-b border-border bg-background px-6">
               <div>
                 <h1 className="font-rounded text-title text-text-primary">

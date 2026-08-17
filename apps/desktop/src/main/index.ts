@@ -9,6 +9,11 @@ import { registerScanIpc } from "./ipc/scan";
 import { registerCleanupIpc } from "./ipc/cleanup";
 import { registerDuplicatesIpc } from "./ipc/duplicates";
 import { registerUnusedFilesIpc } from "./ipc/unused-files";
+import { registerLargeFilesIpc } from "./ipc/large-files";
+import { registerSystemIpc } from "./ipc/system";
+import { registerAiProviderIpc } from "./ipc/ai-provider";
+import { registerForecastIpc } from "./ipc/forecast";
+import { initSnapshotScheduler, bootstrapHistory } from "./services/scheduler";
 
 
 function createWindow() {
@@ -40,10 +45,16 @@ ipcMain.handle("app:ping", (_event, payload: unknown) => {
 
 app.whenReady().then(() => {
   runMigrations();
+  initSnapshotScheduler();
+  bootstrapHistory();
   registerScanIpc();
   registerCleanupIpc();
   registerDuplicatesIpc();
   registerUnusedFilesIpc();
+  registerLargeFilesIpc();
+  registerSystemIpc();
+  registerAiProviderIpc();
+  registerForecastIpc();
   createWindow();
 });
 

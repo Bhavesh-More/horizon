@@ -81,3 +81,60 @@ export const duplicateGroupMembers = sqliteTable(
   })
 );
 
+export const aiProviderConfig = sqliteTable("ai_provider_config", {
+  providerName: text("provider_name", {
+    enum: ["ollama", "openai", "anthropic", "groq", "openrouter"],
+  }).primaryKey(),
+  modelName: text("model_name").notNull(),
+  isActive: integer("is_active").notNull().default(0),
+  addedAt: text("added_at").notNull(),
+});
+
+export const usageSnapshots = sqliteTable("usage_snapshots", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  snapshotDate: text("snapshot_date").notNull().unique(), // YYYY-MM-DD
+  capturedAt: text("captured_at").notNull(), // ISO timestamp
+  volumeTotalBytes: integer("volume_total_bytes").notNull(),
+  volumeUsedBytes: integer("volume_used_bytes").notNull(),
+  volumeFreeBytes: integer("volume_free_bytes").notNull(),
+  isSynthetic: integer("is_synthetic").notNull().default(0),
+});
+
+export const usageSnapshotCategories = sqliteTable(
+  "usage_snapshot_categories",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    snapshotId: integer("snapshot_id")
+      .notNull()
+      .references(() => usageSnapshots.id, { onDelete: "cascade" }),
+    category: text("category").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    segmentId: integer("segment_id").notNull().default(0),
+  },
+  (table) => ({
+    idxSnapshotCategory: index("idx_snapshot_category").on(
+      table.category,
+      table.segmentId
+    ),
+  })
+);
+
+export const forecasts = sqliteTable("forecasts", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  generatedAt: text("generated_at").notNull(),
+  category: text("category").notNull(), // '__total__' or category name
+  modelType: text("model_type").notNull(), // 'theil_sen'
+  dataSource: text("data_source", {
+    enum: ["bootstrap", "blended", "tracked"],
+  }).notNull(),
+  sampleCount: integer("sample_count").notNull(),
+  slopeBytesPerDay: real("slope_bytes_per_day").notNull(),
+  slopeLowBytesPerDay: real("slope_low_bytes_per_day").notNull(),
+  slopeHighBytesPerDay: real("slope_high_bytes_per_day").notNull(),
+  projectedFullDate: text("projected_full_date"),
+  projectedFullDateLow: text("projected_full_date_low"),
+  projectedFullDateHigh: text("projected_full_date_high"),
+  horizonDays: integer("horizon_days"),
+  confidenceScore: real("confidence_score").notNull(),
+});
+

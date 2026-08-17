@@ -12,7 +12,8 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { Button, ScanResultRow } from "@horizon/ui";
-import { FileItem, CategoryStat, ScanProgressEvent } from "@horizon/shared-types";
+import { FileItem, CategoryStat, ScanProgressEvent, ForecastGetResponse } from "@horizon/shared-types";
+import { TrendingUp, Sparkles, ChevronRight, ShieldCheck } from "lucide-react";
 
 function formatBytes(bytes: number): string {
   if (!bytes || bytes === 0) return "0 B";
@@ -35,7 +36,13 @@ const CATEGORY_CONFIG: Record<
   other: { label: "Other", icon: File },
 };
 
-export const OverviewTab = React.memo(function OverviewTab() {
+interface OverviewTabProps {
+  onNavigateToTab?: (tabName: string) => void;
+}
+
+export const OverviewTab = React.memo(function OverviewTab({
+  onNavigateToTab,
+}: OverviewTabProps) {
   const [isPending, startTransition] = useTransition();
   const [isScanning, setIsScanning] = useState(false);
   const [recentFiles, setRecentFiles] = useState<FileItem[]>([]);
@@ -43,6 +50,7 @@ export const OverviewTab = React.memo(function OverviewTab() {
   const [totalFiles, setTotalFiles] = useState(0);
   const [totalBytes, setTotalBytes] = useState(0);
   const [lastCompletedAt, setLastCompletedAt] = useState<string | null>(null);
+  const [forecastData, setForecastData] = useState<ForecastGetResponse | null>(null);
 
   // Mutable stream buffer ref to decouple high-frequency IPC stream from React rendering
   const streamRef = useRef({
@@ -52,6 +60,18 @@ export const OverviewTab = React.memo(function OverviewTab() {
     recentFiles: [] as FileItem[],
     dirty: false,
   });
+
+  const fetchForecast = useCallback(async () => {
+    try {
+      if (!window.horizon?.forecast) return;
+      const res = await window.horizon.forecast.get();
+      if (res.ok && res.data) {
+        setForecastData(res.data);
+      }
+    } catch (err) {
+      console.error("Failed to load forecast data in Overview:", err);
+    }
+  }, []);
 
   const fetchLatestScan = useCallback(async () => {
     try {
@@ -69,10 +89,11 @@ export const OverviewTab = React.memo(function OverviewTab() {
           setCategories(data.categories);
         });
       }
+      fetchForecast();
     } catch (err) {
       console.error("Failed to load latest scan:", err);
     }
-  }, []);
+  }, [fetchForecast]);
 
   // Flush mutable stream ref to React state on a controlled 150ms cadence using React transitions
   useEffect(() => {
@@ -252,6 +273,60 @@ export const OverviewTab = React.memo(function OverviewTab() {
             </span>
           </div>
         </section>
+
+        {/* Forecast Headline Card */}
+        {forecastData?.totalForecast && (
+          <section
+            onClick={() => onNavigateToTab?.("Forecast")}
+            className="cursor-pointer rounded-md border border-border bg-surface p-4 transition-colors hover:border-border/80 hover:bg-surface-secondary/40"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xs bg-surface-secondary text-btn-primary-bg">
+                  <TrendingUp className="h-4 w-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-row font-semibold text-text-primary">
+                      {forecastData.totalForecast.slopeBytesPerDay <= 0 && !forecastData.totalForecast.horizonDays
+                        ? "Storage Runway: Healthy (> 1 Year)"
+                        : `Storage Runway: ~${forecastData.totalForecast.horizonDays} Days to Full`}
+                    </span>
+                    <span
+                      className={`rounded-xs px-1.5 py-0.5 text-meta font-medium ${
+                        forecastData.totalForecast.isSynthetic
+                          ? "bg-tag-unsure-bg text-tag-unsure-text"
+                          : "bg-tag-safe-bg text-tag-safe-text"
+                      }`}
+                    >
+                      {forecastData.totalForecast.isSynthetic
+                        ? "Estimated History"
+                        : `${forecastData.totalForecast.sampleCount} Tracked Days`}
+                    </span>
+                  </div>
+
+                  <p className="mt-0.5 text-meta text-text-secondary">
+                    {forecastData.fastestGrowing && forecastData.fastestGrowing.slopeBytesPerDay > 0
+                      ? `${forecastData.fastestGrowing.category} is growing fastest (${formatBytes(
+                          forecastData.fastestGrowing.slopeBytesPerDay * 30
+                        )}/mo)`
+                      : "Daily storage growth rate is balanced"}
+                    {forecastData.safeCleanableDaysGained > 0 && (
+                      <span className="ml-2 font-medium text-tag-safe-text">
+                        · Cleaning safe items would add ~{forecastData.safeCleanableDaysGained} days
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1 text-meta text-btn-primary-bg">
+                <span>View Forecast</span>
+                <ChevronRight className="h-4 w-4" />
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* Categories Grid */}
         <section className="space-y-3">

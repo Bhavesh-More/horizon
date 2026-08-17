@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { RefreshCw, Trash2, Layers, CheckSquare, Square, AlertCircle, Sparkles } from "lucide-react";
 import { Button, ConfirmationModal, ConfirmationModalItem } from "@horizon/ui";
 import { DuplicateGroup, DuplicateDetectionProgress, ScanProgressEvent } from "@horizon/shared-types";
@@ -12,7 +12,7 @@ function formatBytes(bytes: number): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
 }
 
-export function DuplicatesTab() {
+export const DuplicatesTab = React.memo(function DuplicatesTab() {
   const [groups, setGroups] = useState<DuplicateGroup[]>([]);
   const [filterType, setFilterType] = useState<"all" | "exact" | "perceptual">("all");
   const [isLoading, setIsLoading] = useState(false);
@@ -145,20 +145,19 @@ export function DuplicatesTab() {
 
     setSelectedFileIds((prev) => {
       const next = new Set(prev);
-      // Use functional update — read current groups from state snapshot
-      setGroups((currentGroups) => {
-        const targetGroup = currentGroups.find((g) => g.groupId === groupId);
-        if (targetGroup) {
-          for (const member of targetGroup.members) {
-            if (member.fileId === keepFileId) next.delete(member.fileId);
-            else next.add(member.fileId);
+      const targetGroup = groups.find((g) => g.groupId === groupId);
+      if (targetGroup) {
+        for (const member of targetGroup.members) {
+          if (member.fileId === keepFileId) {
+            next.delete(member.fileId);
+          } else {
+            next.add(member.fileId);
           }
         }
-        return currentGroups; // don't mutate
-      });
+      }
       return next;
     });
-  }, []);
+  }, [groups]);
 
   // ── Selected file metrics ─────────────────────────────────────────────
   const selectedItemsSummary = useMemo(() => {
@@ -169,20 +168,22 @@ export function DuplicatesTab() {
       for (const member of group.members) {
         if (selectedFileIds.has(member.fileId)) {
           totalBytes += member.sizeBytes;
-          const fileName = member.path.split("/").pop() ?? member.path.split("\\").pop() ?? member.path;
-          selectedList.push({
-            id: member.fileId,
-            name: fileName,
-            path: member.path,
-            sizeFormatted: formatBytes(member.sizeBytes),
-            safetyTier: "safe",
-          });
+          if (isTrashModalOpen) {
+            const fileName = member.path.split("/").pop() ?? member.path.split("\\").pop() ?? member.path;
+            selectedList.push({
+              id: member.fileId,
+              name: fileName,
+              path: member.path,
+              sizeFormatted: formatBytes(member.sizeBytes),
+              safetyTier: "safe",
+            });
+          }
         }
       }
     }
 
     return { items: selectedList, totalBytes, totalBytesFormatted: formatBytes(totalBytes) };
-  }, [groups, selectedFileIds]);
+  }, [groups, selectedFileIds, isTrashModalOpen]);
 
   const handleConfirmTrash = async () => {
     if (selectedFileIds.size === 0 || !window.horizon?.cleanup) return;
@@ -348,13 +349,14 @@ export function DuplicatesTab() {
           </div>
         ) : (
           <div className="space-y-4">
-            {groups.map((group) => (
+            {groups.map((group, idx) => (
               <DuplicateGroupCard
                 key={group.groupId}
                 group={group}
                 selectedFileIds={selectedFileIds}
                 onToggleFileSelection={handleToggleFileSelection}
                 onSelectKeepFile={handleSelectKeepFile}
+                defaultExpanded={idx < 5}
               />
             ))}
           </div>
@@ -375,4 +377,4 @@ export function DuplicatesTab() {
       />
     </div>
   );
-}
+});

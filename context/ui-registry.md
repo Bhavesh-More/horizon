@@ -144,12 +144,13 @@ Keep the `Classes` block to the actual, real `className` strings from the compon
   - `selectedFileIds: Set<number>`
   - `onToggleFileSelection: (fileId: number) => void`
   - `onSelectKeepFile: (groupId: number, keepFileId: number) => void`
+  - `defaultExpanded?: boolean`
 - **Classes:**
   ```tsx
-  <div className="overflow-hidden rounded-md border border-border bg-surface transition-all duration-200 hover:border-border/80">
+  <div className="overflow-hidden rounded-md border border-border bg-surface [content-visibility:auto] [contain-intrinsic-size:0_80px] transition-colors duration-150 hover:border-border/80">
   ```
 - **Tokens used:** `surface`, `surface-secondary`, `border`, `text-primary`, `text-secondary`, `text-tertiary`, `tag-safe-text`, `tag-safe-bg`, `tag-check-bg`, `tag-check-text`, `radius-md`
-- **Notes:** Expandable duplicate group card displaying member items, similarity badges, recommended keep selections, and individual item checkbox toggles. Wrapped in `React.memo`.
+- **Notes:** Expandable duplicate group card displaying member items, similarity badges, recommended keep selections, and individual item checkbox toggles. Wrapped in `React.memo` with custom `arePropsEqual` comparator and `content-visibility: auto` layout virtualization.
 
 ### DuplicatesTab
 
@@ -161,4 +162,46 @@ Keep the `Classes` block to the actual, real `className` strings from the compon
   <div className="flex h-full flex-col overflow-hidden bg-background">
   ```
 - **Tokens used:** `background`, `surface`, `surface-secondary`, `border`, `text-primary`, `text-secondary`, `text-tertiary`, `tag-danger-bg`, `tag-danger-text`, `btn-primary-bg`, `btn-primary-text`
-- **Notes:** Full tab interface for browsing exact & near-duplicate groups, filtering by hash type, monitoring real-time detection progress streaming, managing file selection, and triggering batch deletion via `ConfirmationModal`.
+- **Notes:** Full tab interface for browsing exact & near-duplicate groups, filtering by hash type, monitoring real-time detection progress streaming, managing file selection, and triggering batch deletion via `ConfirmationModal`. Wrapped in `React.memo`.
+
+### OverviewTab
+
+- **Path:** `apps/desktop/src/renderer/src/components/OverviewTab.tsx`
+- **Used by:** App main view (`activeTab === "Overview"`)
+- **Props:** None
+- **Classes:**
+  ```tsx
+  <div className="flex h-full flex-col overflow-hidden bg-background">
+  ```
+- **Tokens used:** `background`, `surface`, `surface-secondary`, `border`, `text-primary`, `text-secondary`, `text-tertiary`, `tag-safe-text`, `btn-primary-bg`, `btn-primary-text`, `storage-used`, `storage-free`
+- **Notes:** Landing overview tab with disk breakdown banner, category stats grid, live scan feed preview, and trigger scan controls. Wrapped in `React.memo` with throttled stream buffering.
+
+### UnusedFileCategoryCard
+
+- **Path:** `apps/desktop/src/renderer/src/components/UnusedFileCategoryCard.tsx`
+- **Used by:** Unused Files tab
+- **Props:**
+  - `group: UnusedFileGroup`
+  - `selectedFileIds: Set<number>`
+  - `onToggleFile: (fileId: number) => void`
+  - `onToggleGroup: (fileIds: number[], select: boolean) => void`
+  - `defaultExpanded?: boolean`
+- **Classes:**
+  ```tsx
+  <div className="overflow-hidden rounded-md border border-border bg-surface [content-visibility:auto] transition-colors duration-150 hover:border-border/80">
+  ```
+- **Tokens used:** `surface`, `surface-secondary`, `background`, `border`, `text-primary`, `text-secondary`, `text-tertiary`, `tag-unsure-bg`, `tag-unsure-text`, `btn-primary-bg`, `btn-primary-text`, `text-row`, `text-meta`, `radius-md`, `radius-sm`, `radius-xs`
+- **Notes:** Collapsible category group card for unused files displaying category statistics, individual file items, last access/modified dates, fallback indicators for noatime mounts, and category-level selection toggles. Wrapped in `React.memo`.
+
+### UnusedFilesTab
+
+- **Path:** `apps/desktop/src/renderer/src/components/UnusedFilesTab.tsx`
+- **Used by:** App main view (`activeTab === "Unused Files"`)
+- **Props:** None
+- **Classes:**
+  ```tsx
+  <div className="flex h-full flex-col overflow-hidden bg-background">
+  ```
+- **Tokens used:** `background`, `surface`, `surface-secondary`, `border`, `text-primary`, `text-secondary`, `text-tertiary`, `tag-danger-bg`, `tag-danger-text`, `btn-primary-bg`, `btn-primary-text`, `storage-free`, `text-title`, `text-row`, `text-meta`, `radius-md`, `radius-xs`
+- **Notes:** Complete interface for browsing and filtering unused files by staleness threshold slider (30–730 days) and category chips. Supports multi-selection, select/deselect all, and batch safe removal through `ConfirmationModal`. Wrapped in `React.memo`.
+

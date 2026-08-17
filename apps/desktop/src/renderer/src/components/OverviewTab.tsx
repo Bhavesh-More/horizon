@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useTransition } from "react";
+import React, { useState, useEffect, useCallback, useRef, useTransition } from "react";
 import {
   RefreshCw,
   FileImage,
@@ -35,7 +35,7 @@ const CATEGORY_CONFIG: Record<
   other: { label: "Other", icon: File },
 };
 
-export function OverviewTab() {
+export const OverviewTab = React.memo(function OverviewTab() {
   const [isPending, startTransition] = useTransition();
   const [isScanning, setIsScanning] = useState(false);
   const [recentFiles, setRecentFiles] = useState<FileItem[]>([]);
@@ -325,4 +325,4 @@ export function OverviewTab() {
       </div>
     </div>
   );
-}
+});

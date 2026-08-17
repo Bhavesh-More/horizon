@@ -15,7 +15,7 @@ Living document. Updated as work is completed — mark a checkbox only when a ph
 
 ## At a glance
 
-**Current phase:** Phase 4 — Unused files
+**Current phase:** Phase 5 — Large files
 **MVP checkpoint (Phases 0–5) reached:** ☐
 **Track-ready build (Phases 0–11) reached:** ☐
 **Full scope (Phases 0–15) reached:** ☐
@@ -81,12 +81,12 @@ Living document. Updated as work is completed — mark a checkbox only when a ph
 
 ## Phase 4 — Unused files
 
-- [ ] `staleness.ts` (accessed_at with documented modified_at fallback)
-- [ ] IPC: `unused-files:list` with `thresholdDays`
-- [ ] Unused Files tab: staleness slider, grouped results, multi-select, wired to Trash
+- [x] `staleness.ts` (accessed_at with documented modified_at fallback)
+- [x] IPC: `unused-files:list` with `thresholdDays`
+- [x] Unused Files tab: staleness slider, grouped results, multi-select, wired to Trash
 
 **Exit criteria:** threshold changes correctly refilter results with no re-scan; trashing works identically to Duplicates.
-**Status notes:**
+**Status notes:** Phase 4 implementation complete. Staleness service in `main/services/staleness.ts` queries indexed `accessed_at` column with `modified_at` COALESCE fallback and tags `usedFallback: true` for noatime files. Contract-validated IPC `unused-files:list` registered and exposed via preload bridge. `UnusedFilesTab` and `UnusedFileCategoryCard` built with interactive staleness slider (30–730 days), category filter chips, multi-select, and safe OS removal via `ConfirmationModal` and `cleanup:trash`. All 20 unit tests passing.
 
 ---
 

@@ -8,6 +8,7 @@ import { runMigrations } from "./db/migrate";
 import { registerScanIpc } from "./ipc/scan";
 import { registerCleanupIpc } from "./ipc/cleanup";
 import { registerDuplicatesIpc } from "./ipc/duplicates";
+import { registerUnusedFilesIpc } from "./ipc/unused-files";
 
 
 function createWindow() {
@@ -42,6 +43,7 @@ app.whenReady().then(() => {
   registerScanIpc();
   registerCleanupIpc();
   registerDuplicatesIpc();
+  registerUnusedFilesIpc();
   createWindow();
 });
 

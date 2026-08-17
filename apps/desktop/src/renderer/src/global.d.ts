@@ -4,6 +4,7 @@ import {
   CleanupTrashResponse,
   DuplicatesListResponse,
   DuplicateDetectionProgress,
+  UnusedFilesListResponse,
 } from "@horizon/shared-types";
 
 export {};
@@ -24,6 +25,9 @@ declare global {
         start: (scanRunId?: number) => Promise<{ ok: boolean; data?: { groupsCount: number }; error?: any }>;
         isRunning: () => Promise<{ ok: boolean; data?: boolean }>;
         onProgress: (callback: (event: DuplicateDetectionProgress) => void) => () => void;
+      };
+      unusedFiles: {
+        list: (thresholdDays?: number, category?: string, scanRunId?: number) => Promise<{ ok: boolean; data?: UnusedFilesListResponse; error?: any }>;
       };
     };
   }

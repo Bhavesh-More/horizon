@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useTransition } from "react";
 import {
   Archive,
   Clock3,
@@ -13,36 +13,46 @@ import {
 } from "lucide-react";
 import { OverviewTab } from "./components/OverviewTab";
 import { DuplicatesTab } from "./components/DuplicatesTab";
+import { UnusedFilesTab } from "./components/UnusedFilesTab";
+
+const TABS = [
+  { label: "Overview", icon: LayoutGrid },
+  { label: "Duplicates", icon: ScanSearch },
+  { label: "Unused Files", icon: Layers3 },
+  { label: "Large Files", icon: HardDriveDownload },
+  { label: "Forecast", icon: Files },
+  { label: "Assistant", icon: Sparkles },
+  { label: "Archive", icon: Archive },
+  { label: "Activity", icon: Clock3 },
+  { label: "Settings", icon: Settings2 },
+] as const;
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState("Overview");
+  const [activeTab, setActiveTab] = useState<string>("Overview");
+  const [, startTransition] = useTransition();
 
-  const tabs = [
-    { label: "Overview", icon: LayoutGrid },
-    { label: "Duplicates", icon: ScanSearch },
-    { label: "Unused Files", icon: Layers3 },
-    { label: "Large Files", icon: HardDriveDownload },
-    { label: "Forecast", icon: Files },
-    { label: "Assistant", icon: Sparkles },
-    { label: "Archive", icon: Archive },
-    { label: "Activity", icon: Clock3 },
-    { label: "Settings", icon: Settings2 },
-  ];
+  const handleSelectTab = (label: string) => {
+    startTransition(() => {
+      setActiveTab(label);
+    });
+  };
 
   // Global ⌘1-⌘9 / Ctrl+1-9 keyboard shortcut listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key >= "1" && e.key <= "9") {
         const index = parseInt(e.key, 10) - 1;
-        if (index >= 0 && index < tabs.length) {
+        if (index >= 0 && index < TABS.length) {
           e.preventDefault();
-          setActiveTab(tabs[index].label);
+          startTransition(() => {
+            setActiveTab(TABS[index].label);
+          });
         }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [tabs]);
+  }, []);
 
   return (
     <div className="flex h-screen bg-background text-text-primary overflow-hidden">
@@ -58,13 +68,13 @@ export default function App() {
         </div>
 
         <nav className="flex flex-1 flex-col gap-1">
-          {tabs.map(({ label, icon: Icon }) => {
+          {TABS.map(({ label, icon: Icon }) => {
             const isActive = activeTab === label;
             return (
               <button
                 key={label}
                 type="button"
-                onClick={() => setActiveTab(label)}
+                onClick={() => handleSelectTab(label)}
                 className={`flex items-center gap-3 rounded-md px-3 py-2 text-left text-row transition-colors cursor-pointer ${
                   isActive
                     ? "bg-surface-secondary text-text-primary font-medium"
@@ -103,7 +113,10 @@ export default function App() {
         <div className={activeTab === "Duplicates" ? "h-full flex flex-col" : "hidden"}>
           <DuplicatesTab />
         </div>
-        {activeTab !== "Overview" && activeTab !== "Duplicates" && (
+        <div className={activeTab === "Unused Files" ? "h-full flex flex-col" : "hidden"}>
+          <UnusedFilesTab />
+        </div>
+        {activeTab !== "Overview" && activeTab !== "Duplicates" && activeTab !== "Unused Files" && (
           <div className="flex h-full flex-col">
             <header className="flex h-[72px] shrink-0 items-center justify-between border-b border-border bg-background px-6">
               <div>

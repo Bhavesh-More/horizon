@@ -65,6 +65,12 @@ contextBridge.exposeInMainWorld("horizon", {
       };
     },
   },
+  unusedFiles: {
+    list: async (thresholdDays: number = 180, category?: string, scanRunId?: number) => {
+      const cleanCategory = !category || category === "all" ? undefined : category;
+      return await ipcRenderer.invoke("unused-files:list", { thresholdDays, category: cleanCategory, scanRunId });
+    },
+  },
 });
 
 

@@ -3,7 +3,7 @@ import { z } from "zod";
 export const DataSourceSchema = z.enum(["bootstrap", "blended", "tracked"]);
 export type DataSource = z.infer<typeof DataSourceSchema>;
 
-export const ForecastStatusSchema = z.enum(["ready", "calculating", "insufficient_data"]);
+export const ForecastStatusSchema = z.enum(["ready", "calculating", "insufficient_data", "building_baseline"]);
 export type ForecastStatus = z.infer<typeof ForecastStatusSchema>;
 
 export const CategoryForecastSchema = z.object({
@@ -47,6 +47,9 @@ export const UsageSnapshotPointSchema = z.object({
 });
 export type UsageSnapshotPoint = z.infer<typeof UsageSnapshotPointSchema>;
 
+export const UsagePatternSchema = z.enum(["growing", "shrinking", "stable", "high_churn"]);
+export type UsagePattern = z.infer<typeof UsagePatternSchema>;
+
 export const ForecastGetResponseSchema = z.object({
   status: ForecastStatusSchema,
   totalForecast: TotalForecastSchema.nullable(),
@@ -58,6 +61,18 @@ export const ForecastGetResponseSchema = z.object({
   currentVolumeFreeBytes: z.number(),
   safeCleanableBytes: z.number().default(0),
   safeCleanableDaysGained: z.number().default(0),
+  /** Minimum free bytes observed across all real (non-synthetic) snapshots */
+  minObservedFreeBytes: z.number().default(0),
+  /** Maximum free bytes observed across all real (non-synthetic) snapshots */
+  maxObservedFreeBytes: z.number().default(0),
+  /** Std-dev of free bytes across real snapshots — indicates churn volatility */
+  usageVolatilityBytes: z.number().default(0),
+  /** Detected usage pattern based on slope and volatility */
+  usagePattern: UsagePatternSchema.default("stable"),
+  /** Number of real (non-synthetic) daily snapshots collected so far */
+  realTrackedDays: z.number().default(0),
+  /** Minimum real days required before a projection is shown */
+  minDaysForProjection: z.number().default(14),
 });
 export type ForecastGetResponse = z.infer<typeof ForecastGetResponseSchema>;
 

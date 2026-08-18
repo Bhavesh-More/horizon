@@ -21,6 +21,7 @@ import {
   ForecastWhatIfResponse,
   DataSource,
   ForecastStatus,
+  UsagePattern,
 } from "@horizon/shared-types";
 import { getDiskVolumeStats, formatLocalDate } from "./scheduler";
 
@@ -136,6 +137,15 @@ export function generateForecasts(): void {
   const dataSource: DataSource =
     realCount >= 3 ? "tracked" : realCount >= 1 ? "blended" : "bootstrap";
 
+  // Minimum real tracked days required before showing any projection.
+  // Below this threshold the slope estimate is too noisy to be useful.
+  const MIN_REAL_DAYS_FOR_PROJECTION = 5;
+  const hasEnoughRealData = realCount >= MIN_REAL_DAYS_FOR_PROJECTION;
+
+  // Always use LIVE OS free space for horizon calculation, not stale snapshot data.
+  const liveDisk = getDiskVolumeStats();
+  const liveFreeBytesNow = liveDisk.freeBytes;
+
   // 1. Total disk fit
   const totalPoints: DataPoint[] = snapshots.map((s) => {
     const dayOffset = Math.round(
@@ -145,26 +155,37 @@ export function generateForecasts(): void {
   });
 
   const totalFit = computeTheilSenRegression(totalPoints);
-  const latestX = totalPoints[totalPoints.length - 1].x;
 
   let horizonDays: number | null = null;
   let projectedFullDate: string | null = null;
   let projectedFullDateLow: string | null = null;
   let projectedFullDateHigh: string | null = null;
 
-  if (totalFit.slope > 0) {
-    const remainingBytes = Math.max(0, totalVolumeBytes - currentUsedBytes);
-    horizonDays = Math.max(1, Math.round(remainingBytes / totalFit.slope));
-    const now = new Date();
-    projectedFullDate = addDaysToDate(now, horizonDays);
+  // Only produce a projection once enough real data is available.
+  // Before that, the slope is noise from synthetic bootstrap history.
+  if (hasEnoughRealData) {
+    const MIN_SLOPE_BYTES_PER_DAY = 1024 * 1024; // 1 MB/day noise floor
+    const effectiveSlope = Math.max(totalFit.slope, 0);
 
-    if (totalFit.slopeHigh > 0) {
-      const minDays = Math.max(1, Math.round(remainingBytes / totalFit.slopeHigh));
-      projectedFullDateLow = addDaysToDate(now, minDays); // Fills sooner
-    }
-    if (totalFit.slopeLow > 0) {
-      const maxDays = Math.max(1, Math.round(remainingBytes / totalFit.slopeLow));
-      projectedFullDateHigh = addDaysToDate(now, maxDays); // Fills later
+    if (effectiveSlope >= MIN_SLOPE_BYTES_PER_DAY) {
+      horizonDays = Math.max(1, Math.round(liveFreeBytesNow / effectiveSlope));
+      const now = new Date();
+      projectedFullDate = addDaysToDate(now, horizonDays);
+
+      if (totalFit.slopeHigh >= MIN_SLOPE_BYTES_PER_DAY) {
+        const minDays = Math.max(1, Math.round(liveFreeBytesNow / totalFit.slopeHigh));
+        projectedFullDateLow = addDaysToDate(now, minDays);
+      }
+      if (totalFit.slopeLow >= MIN_SLOPE_BYTES_PER_DAY) {
+        const maxDays = Math.max(1, Math.round(liveFreeBytesNow / totalFit.slopeLow));
+        projectedFullDateHigh = addDaysToDate(now, maxDays);
+      }
+    } else if (liveFreeBytesNow < 5 * 1024 * 1024 * 1024) {
+      // Slope is noise but free space is critically low — surface with fallback
+      const fallbackSlope = 100 * 1024 * 1024;
+      horizonDays = Math.max(1, Math.round(liveFreeBytesNow / fallbackSlope));
+      const now = new Date();
+      projectedFullDate = addDaysToDate(now, horizonDays);
     }
   }
 
@@ -292,6 +313,12 @@ export function getForecastData(): ForecastGetResponse {
       currentVolumeFreeBytes: disk.freeBytes,
       safeCleanableBytes: 0,
       safeCleanableDaysGained: 0,
+      minObservedFreeBytes: disk.freeBytes,
+      maxObservedFreeBytes: disk.freeBytes,
+      usageVolatilityBytes: 0,
+      usagePattern: "stable" as const,
+      realTrackedDays: 0,
+      minDaysForProjection: 5,
     };
   }
 
@@ -376,8 +403,54 @@ export function getForecastData(): ForecastGetResponse {
     );
   }
 
+  // Compute churn / volatility metrics from real (non-synthetic) snapshots only
+  const realSnapshots = snapshots.filter((s) => s.isSynthetic === 0);
+  const realFreeValues = realSnapshots.map((s) => s.volumeFreeBytes);
+
+  let minObservedFreeBytes = disk.freeBytes;
+  let maxObservedFreeBytes = disk.freeBytes;
+  let usageVolatilityBytes = 0;
+
+  if (realFreeValues.length >= 2) {
+    minObservedFreeBytes = Math.min(...realFreeValues);
+    maxObservedFreeBytes = Math.max(...realFreeValues);
+    const mean = realFreeValues.reduce((a, b) => a + b, 0) / realFreeValues.length;
+    const variance = realFreeValues.reduce((a, b) => a + (b - mean) ** 2, 0) / realFreeValues.length;
+    usageVolatilityBytes = Math.round(Math.sqrt(variance));
+  }
+
+  // Classify usage pattern:
+  // high_churn: large swings (std-dev > 2 GB) with near-zero net slope
+  // growing: measurable positive slope
+  // shrinking: measurable negative slope
+  // stable: low volatility, flat slope
+  const slope = totalForecast?.slopeBytesPerDay ?? 0;
+  const HIGH_VOLATILITY_THRESHOLD = 2 * 1024 * 1024 * 1024; // 2 GB std-dev
+  const MEANINGFUL_SLOPE = 5 * 1024 * 1024; // 5 MB/day
+
+  let usagePattern: UsagePattern;
+  if (usageVolatilityBytes > HIGH_VOLATILITY_THRESHOLD && Math.abs(slope) < MEANINGFUL_SLOPE) {
+    usagePattern = "high_churn";
+  } else if (slope > MEANINGFUL_SLOPE) {
+    usagePattern = "growing";
+  } else if (slope < -MEANINGFUL_SLOPE) {
+    usagePattern = "shrinking";
+  } else {
+    usagePattern = "stable";
+  }
+
+  const MIN_REAL_DAYS_FOR_PROJECTION = 5;
+  const isBuildingBaseline = realSnapshots.length < MIN_REAL_DAYS_FOR_PROJECTION;
+
+  let status: ForecastStatus = "ready";
+  if (snapshots.length < 2) {
+    status = "insufficient_data";
+  } else if (isBuildingBaseline) {
+    status = "building_baseline";
+  }
+
   return {
-    status: snapshots.length >= 2 ? "ready" : "insufficient_data",
+    status,
     totalForecast,
     categoryForecasts,
     fastestGrowing,
@@ -387,6 +460,12 @@ export function getForecastData(): ForecastGetResponse {
     currentVolumeFreeBytes: disk.freeBytes,
     safeCleanableBytes,
     safeCleanableDaysGained,
+    minObservedFreeBytes,
+    maxObservedFreeBytes,
+    usageVolatilityBytes,
+    usagePattern,
+    realTrackedDays: realSnapshots.length,
+    minDaysForProjection: MIN_REAL_DAYS_FOR_PROJECTION,
   };
 }
 

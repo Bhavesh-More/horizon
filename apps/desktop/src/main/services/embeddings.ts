@@ -13,7 +13,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { Ollama } from "ollama";
 import OpenAI from "openai";
-import { getProvidersStatus } from "./llm-client";
+import { getProvidersStatus, getOllamaHost } from "./llm-client";
 import { getProviderKey } from "../core/secure-storage";
 
 export const SUPPORTED_TEXT_EXTENSIONS = new Set([
@@ -66,6 +66,29 @@ export interface ClusteredEmbeddingGroup {
   members: ClusteredEmbeddingMember[];
 }
 
+// Ignored noise directories and files that should not be embedded
+const IGNORED_PATH_PATTERNS = [
+  "node_modules",
+  ".git",
+  ".next",
+  "dist",
+  "build",
+  "out",
+  ".cache",
+  "coverage",
+  ".venv",
+  "venv",
+  "vendor",
+  "__pycache__",
+  "package-lock.json",
+  "yarn.lock",
+  "pnpm-lock.yaml",
+  ".min.",
+];
+
+// In-memory cache for computed document embeddings across runs
+const embeddingCache = new Map<string, number[]>();
+
 /**
  * Checks if a file candidate is eligible for text embedding analysis
  */
@@ -73,6 +96,14 @@ export function isTextDocumentCandidate(
   filePath: string,
   category: string
 ): boolean {
+  // Exclude noise paths
+  const normPath = filePath.toLowerCase();
+  for (const pattern of IGNORED_PATH_PATTERNS) {
+    if (normPath.includes(pattern)) {
+      return false;
+    }
+  }
+
   if (category === "document" || category === "dev_artifact" || category === "other") {
     const ext = path.extname(filePath).slice(1).toLowerCase();
     return SUPPORTED_TEXT_EXTENSIONS.has(ext);
@@ -140,7 +171,7 @@ export async function getEmbeddingVector(text: string): Promise<number[]> {
   const active = status.providers.find((p) => p.isActive) || status.providers[0];
 
   if (!active || active.providerName === "ollama") {
-    const ollama = new Ollama({ host: "http://127.0.0.1:11434" });
+    const ollama = new Ollama({ host: getOllamaHost() });
     try {
       // First try standard nomic-embed-text
       const res = await ollama.embeddings({
@@ -182,7 +213,9 @@ export async function clusterDocumentEmbeddings(
   threshold: number = 0.85,
   onProgress?: (processed: number, total: number) => void
 ): Promise<ClusteredEmbeddingGroup[]> {
-  if (candidates.length < 2) {
+  // Cap candidate pool to avoid CPU/GPU lockup on huge repos
+  const cappedCandidates = candidates.slice(0, 200);
+  if (cappedCandidates.length < 2) {
     return [];
   }
 
@@ -190,27 +223,37 @@ export async function clusterDocumentEmbeddings(
   const validCandidates: { candidate: DocumentCandidate; embedding: number[] }[] = [];
   let processed = 0;
 
-  for (const c of candidates) {
+  for (const c of cappedCandidates) {
     if (isTextDocumentCandidate(c.path, c.category)) {
-      const text = await extractDocumentText(c.path);
-      if (text) {
-        try {
-          const embedding = await getEmbeddingVector(text);
-          if (embedding && embedding.length > 0) {
-            validCandidates.push({ candidate: c, embedding });
+      const cacheKey = `${c.path}:${c.sizeBytes}:${c.modifiedAt || ""}`;
+      let embedding = embeddingCache.get(cacheKey);
+
+      if (!embedding) {
+        const text = await extractDocumentText(c.path);
+        if (text) {
+          try {
+            embedding = await getEmbeddingVector(text);
+            if (embedding && embedding.length > 0) {
+              embeddingCache.set(cacheKey, embedding);
+            }
+          } catch (err) {
+            // If embedding fails (e.g. Ollama offline or busy), continue gracefully
+            console.warn(`[embeddings] Failed embedding for ${c.path}:`, err);
           }
-        } catch (err) {
-          // If embedding fails for a file, continue gracefully
-          console.warn(`[embeddings] Failed embedding for ${c.path}:`, err);
         }
       }
+
+      if (embedding && embedding.length > 0) {
+        validCandidates.push({ candidate: c, embedding });
+      }
     }
+
     processed++;
     if (onProgress) {
-      onProgress(processed, candidates.length);
+      onProgress(processed, cappedCandidates.length);
     }
-    // Yield to event loop
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    // Yield to event loop to keep UI responsive and prevent thermal throttling
+    await new Promise((resolve) => setTimeout(resolve, 5));
   }
 
   if (validCandidates.length < 2) {

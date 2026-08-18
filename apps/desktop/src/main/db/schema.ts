@@ -87,6 +87,7 @@ export const aiProviderConfig = sqliteTable("ai_provider_config", {
   }).primaryKey(),
   modelName: text("model_name").notNull(),
   isActive: integer("is_active").notNull().default(0),
+  baseUrl: text("base_url"), // For Ollama: null = local (127.0.0.1:11434), set = remote API endpoint
   addedAt: text("added_at").notNull(),
 });
 

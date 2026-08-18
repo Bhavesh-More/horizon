@@ -23,6 +23,26 @@ import {
   AiProviderStatusResponse,
 } from "@horizon/shared-types";
 
+/** Default local Ollama endpoint */
+export const OLLAMA_LOCAL_HOST = "http://127.0.0.1:11434";
+
+/**
+ * Returns the Ollama base URL to use: the user-configured remote URL if saved,
+ * otherwise the local default.
+ */
+export function getOllamaHost(): string {
+  try {
+    const stored = db
+      .select()
+      .from(aiProviderConfig)
+      .where(eq(aiProviderConfig.providerName, "ollama"))
+      .get();
+    return stored?.baseUrl || OLLAMA_LOCAL_HOST;
+  } catch {
+    return OLLAMA_LOCAL_HOST;
+  }
+}
+
 const DEFAULT_MODELS: Record<AiProviderName, string> = {
   ollama: "llama3.2:3b",
   openai: "gpt-4o-mini",
@@ -84,8 +104,13 @@ export async function getProvidersStatus(): Promise<AiProviderStatusResponse> {
   const dbConfigs = db.select().from(aiProviderConfig).all();
   const configMap = new Map(dbConfigs.map((c) => [c.providerName, c]));
 
-  // Check Ollama daemon reachability & local models
-  const ollamaCheck = await listOllamaModels();
+  // Determine Ollama host: use stored remote URL if configured
+  const ollamaStoredConfig = configMap.get("ollama");
+  const ollamaHost = ollamaStoredConfig?.baseUrl || OLLAMA_LOCAL_HOST;
+  const ollamaMode = ollamaStoredConfig?.baseUrl ? "remote" : "local";
+
+  // Check Ollama daemon reachability & list models from the configured host
+  const ollamaCheck = await listOllamaModels(ollamaHost);
 
   let activeProvider: AiProviderName = "ollama";
   let activeModel: string = DEFAULT_MODELS.ollama;
@@ -111,7 +136,7 @@ export async function getProvidersStatus(): Promise<AiProviderStatusResponse> {
       activeModel = modelName;
     }
 
-    return {
+    const info: AiProviderInfo = {
       providerName: name,
       displayName: DISPLAY_NAMES[name],
       modelName,
@@ -121,6 +146,15 @@ export async function getProvidersStatus(): Promise<AiProviderStatusResponse> {
       isLocal,
       availableModels: isLocal ? ollamaCheck.models : undefined,
     };
+
+    if (name === "ollama") {
+      info.ollamaMode = ollamaMode;
+      if (ollamaStoredConfig?.baseUrl) {
+        info.baseUrl = ollamaStoredConfig.baseUrl;
+      }
+    }
+
+    return info;
   });
 
   return {
@@ -192,7 +226,17 @@ export async function configureProvider(params: {
   baseUrl?: string;
   setActive?: boolean;
 }): Promise<{ success: boolean; message?: string }> {
-  // Validate probe request first if an API key is provided or for cloud providers
+  // For Ollama remote mode, validate connectivity against the custom endpoint
+  if (params.provider === "ollama" && params.baseUrl) {
+    const probe = await testProviderConnection(params);
+    if (!probe.success) {
+      throw new Error(
+        `Ollama remote connection failed: ${probe.error || "Connection test rejected"}`
+      );
+    }
+  }
+
+  // Validate probe request first if an API key is provided for cloud providers
   if (params.provider !== "ollama" && params.apiKey) {
     const probe = await testProviderConnection(params);
     if (!probe.success) {
@@ -220,11 +264,18 @@ export async function configureProvider(params: {
     .where(eq(aiProviderConfig.providerName, params.provider))
     .get();
 
+  // baseUrl: empty string means "clear" (revert to local), undefined means "don't change"
+  const resolvedBaseUrl =
+    params.baseUrl !== undefined
+      ? params.baseUrl.trim() || null
+      : existing?.baseUrl ?? null;
+
   if (existing) {
     db.update(aiProviderConfig)
       .set({
         modelName: params.model,
         isActive: params.setActive ? 1 : existing.isActive,
+        baseUrl: resolvedBaseUrl,
       })
       .where(eq(aiProviderConfig.providerName, params.provider))
       .run();
@@ -234,6 +285,7 @@ export async function configureProvider(params: {
         providerName: params.provider,
         modelName: params.model,
         isActive: params.setActive ? 1 : 0,
+        baseUrl: resolvedBaseUrl,
         addedAt: now,
       })
       .run();
@@ -293,7 +345,7 @@ export async function generateCompletion(params: {
   }
 
   if (active.providerName === "ollama") {
-    const ollama = new Ollama({ host: "http://127.0.0.1:11434" });
+    const ollama = new Ollama({ host: getOllamaHost() });
     const response = await ollama.generate({
       model: active.modelName,
       prompt: params.prompt,

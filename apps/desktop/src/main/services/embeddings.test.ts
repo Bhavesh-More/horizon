@@ -26,9 +26,13 @@ vi.mock("./llm-client", () => ({
         isConfigured: true,
         hasKey: false,
         isLocal: true,
+        ollamaMode: "local",
       },
     ],
   }),
+  getOllamaHost: vi.fn().mockReturnValue("http://127.0.0.1:11434"),
+  getProviderKey: vi.fn().mockReturnValue(null),
+  OLLAMA_LOCAL_HOST: "http://127.0.0.1:11434",
 }));
 
 // Mock secure-storage

@@ -13,11 +13,14 @@ import {
   Monitor,
   FolderLock,
   Cpu,
+  Globe,
+  Server,
 } from "lucide-react";
 import {
   AiProviderName,
   AiProviderInfo,
   AiProviderStatusResponse,
+  OllamaMode,
 } from "@horizon/shared-types";
 
 const THEMES = [
@@ -34,6 +37,10 @@ export const SettingsTab: React.FC = React.memo(function SettingsTab() {
   const [apiKeyInput, setApiKeyInput] = useState<string>("");
   const [showKey, setShowKey] = useState<boolean>(false);
   const [activeTheme, setActiveTheme] = useState<"light" | "dark" | "system">("dark");
+
+  // Ollama-specific local / remote mode state
+  const [ollamaMode, setOllamaMode] = useState<OllamaMode>("local");
+  const [baseUrlInput, setBaseUrlInput] = useState<string>("");
 
   // Test & Action status states
   const [testing, setTesting] = useState<boolean>(false);
@@ -56,6 +63,10 @@ export const SettingsTab: React.FC = React.memo(function SettingsTab() {
         if (currentActive) {
           setSelectedProvider(currentActive.providerName);
           setModelInput(currentActive.modelName);
+          if (currentActive.providerName === "ollama") {
+            setOllamaMode(currentActive.ollamaMode || "local");
+            setBaseUrlInput(currentActive.baseUrl || "");
+          }
         }
       }
     } catch (err) {
@@ -79,6 +90,10 @@ export const SettingsTab: React.FC = React.memo(function SettingsTab() {
     const prov = status?.providers.find((p) => p.providerName === providerName);
     if (prov) {
       setModelInput(prov.modelName);
+      if (providerName === "ollama") {
+        setOllamaMode(prov.ollamaMode || "local");
+        setBaseUrlInput(prov.baseUrl || "");
+      }
     }
   };
 
@@ -92,6 +107,10 @@ export const SettingsTab: React.FC = React.memo(function SettingsTab() {
         provider: selectedProvider,
         model: modelInput.trim(),
         apiKey: apiKeyInput.trim() || undefined,
+        baseUrl:
+          selectedProvider === "ollama" && ollamaMode === "remote"
+            ? baseUrlInput.trim() || undefined
+            : undefined,
       });
 
       if (res.ok && res.data) {
@@ -121,6 +140,13 @@ export const SettingsTab: React.FC = React.memo(function SettingsTab() {
         provider: selectedProvider,
         model: modelInput.trim(),
         apiKey: apiKeyInput.trim() || undefined,
+        // For Ollama: pass the remote URL if in remote mode, empty string to clear if switching to local
+        baseUrl:
+          selectedProvider === "ollama"
+            ? ollamaMode === "remote"
+              ? baseUrlInput.trim()
+              : "" // empty string clears stored remote URL
+            : undefined,
         setActive: true,
       });
 
@@ -270,6 +296,69 @@ export const SettingsTab: React.FC = React.memo(function SettingsTab() {
                 </button>
               )}
             </div>
+
+            {/* Ollama Mode Toggle (local vs remote) */}
+            {selectedProvider === "ollama" && (
+              <div className="space-y-3">
+                <label className="text-meta font-medium text-text-secondary">
+                  Connection Mode
+                </label>
+                <div className="flex rounded-md border border-border overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOllamaMode("local");
+                      setBaseUrlInput("");
+                      setTestResult(null);
+                    }}
+                    className={`flex flex-1 items-center justify-center gap-2 px-4 py-2 text-row transition-colors cursor-pointer ${
+                      ollamaMode === "local"
+                        ? "bg-surface-secondary text-text-primary font-medium"
+                        : "bg-surface text-text-secondary hover:text-text-primary"
+                    }`}
+                  >
+                    <Server className="h-3.5 w-3.5" />
+                    <span>Local</span>
+                    <span className="text-meta text-text-tertiary">127.0.0.1:11434</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOllamaMode("remote");
+                      setTestResult(null);
+                    }}
+                    className={`flex flex-1 items-center justify-center gap-2 px-4 py-2 text-row transition-colors cursor-pointer border-l border-border ${
+                      ollamaMode === "remote"
+                        ? "bg-surface-secondary text-text-primary font-medium"
+                        : "bg-surface text-text-secondary hover:text-text-primary"
+                    }`}
+                  >
+                    <Globe className="h-3.5 w-3.5" />
+                    <span>Remote / Cloud API</span>
+                  </button>
+                </div>
+
+                {/* Remote Base URL input */}
+                {ollamaMode === "remote" && (
+                  <div className="space-y-1.5">
+                    <label className="text-meta font-medium text-text-secondary">
+                      Ollama API Base URL
+                    </label>
+                    <input
+                      type="url"
+                      value={baseUrlInput}
+                      onChange={(e) => setBaseUrlInput(e.target.value)}
+                      placeholder="https://my-ollama-server.example.com:11434"
+                      className="w-full rounded-sm border border-border bg-surface px-3 py-1.5 text-row text-text-primary placeholder:text-text-tertiary focus:outline-hidden"
+                    />
+                    <p className="text-meta text-text-tertiary">
+                      Point to any Ollama-compatible endpoint. Your local models
+                      will be discovered from this host.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Model Name Input / Dropdown */}
             <div className="space-y-1.5">

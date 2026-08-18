@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   TrendingUp,
   AlertTriangle,
+  AlertOctagon,
   Sparkles,
   Calendar,
   Layers,
@@ -14,6 +15,9 @@ import {
   ChevronRight,
   ShieldCheck,
   Files,
+  HardDrive,
+  Zap,
+  Activity,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -171,7 +175,8 @@ export const ForecastTab = React.memo(function ForecastTab({
     }));
 
     const total = data.totalForecast;
-    if (total && total.slopeBytesPerDay > 0 && data.history.length > 0) {
+    const isBuilding = data.status === "building_baseline";
+    if (!isBuilding && total && total.slopeBytesPerDay > 0 && data.history.length > 0 && total.horizonDays !== null) {
       const lastPoint = data.history[data.history.length - 1];
       const lastDate = new Date(lastPoint.snapshotDate);
       const lastUsedGB = lastPoint.volumeUsedBytes / (1024 * 1024 * 1024);
@@ -211,9 +216,32 @@ export const ForecastTab = React.memo(function ForecastTab({
   }, [data]);
 
   const totalForecast = data?.totalForecast;
-  const isHealthy = !totalForecast || (totalForecast.slopeBytesPerDay <= 0 && !totalForecast.horizonDays);
   const daysToFull = totalForecast?.horizonDays;
   const isBootstrap = totalForecast?.dataSource === "bootstrap";
+  const isBuildingBaseline = data?.status === "building_baseline";
+
+  // Live disk capacity metrics
+  const freeGB = data ? data.currentVolumeFreeBytes / (1024 ** 3) : null;
+  const totalGB = data ? data.currentVolumeTotalBytes / (1024 ** 3) : null;
+  const usedPercent = (data && totalGB && totalGB > 0)
+    ? Math.round((data.currentVolumeUsedBytes / data.currentVolumeTotalBytes) * 100)
+    : null;
+
+  // Urgency level based on live free space
+  const urgency: "critical" | "warning" | "ok" | null =
+    freeGB === null ? null
+    : freeGB < 5 ? "critical"
+    : freeGB < 15 ? "warning"
+    : "ok";
+
+  const isHealthy = !isBuildingBaseline && urgency === "ok" && (!daysToFull || daysToFull > 365);
+
+  // Churn / volatility insights
+  const usagePattern = data?.usagePattern;
+  const isHighChurn = usagePattern === "high_churn";
+  const minFreeGB = data ? data.minObservedFreeBytes / (1024 ** 3) : null;
+  const maxFreeGB = data ? data.maxObservedFreeBytes / (1024 ** 3) : null;
+  const volatilityGB = data ? data.usageVolatilityBytes / (1024 ** 3) : null;
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-background">
@@ -239,56 +267,158 @@ export const ForecastTab = React.memo(function ForecastTab({
         </Button>
       </header>
 
+      {/* Critical / Warning Free Space Alert Banner */}
+        {urgency === "critical" && (
+          <div className="mx-6 mt-4 flex items-start gap-3 rounded-md border border-tag-danger-text/40 bg-tag-danger-bg px-4 py-3">
+            <AlertOctagon className="h-5 w-5 shrink-0 text-tag-danger-text mt-0.5" />
+            <div>
+              <p className="text-meta-emphasis font-semibold text-tag-danger-text">
+                Critical: Only {freeGB !== null ? freeGB.toFixed(1) : "—"} GB free
+                {totalGB ? ` (${usedPercent}% used of ${totalGB.toFixed(0)} GB)` : ""}
+              </p>
+              <p className="text-meta text-tag-danger-text/80 mt-0.5">
+                Your disk is nearly full. Clean up files now to avoid system errors.
+              </p>
+            </div>
+          </div>
+        )}
+        {urgency === "warning" && (
+          <div className="mx-6 mt-4 flex items-start gap-3 rounded-md border border-tag-unsure-text/40 bg-tag-unsure-bg px-4 py-3">
+            <AlertTriangle className="h-5 w-5 shrink-0 text-tag-unsure-text mt-0.5" />
+            <div>
+              <p className="text-meta-emphasis font-semibold text-tag-unsure-text">
+                Low Storage: {freeGB !== null ? freeGB.toFixed(1) : "—"} GB free
+                {totalGB ? ` (${usedPercent}% used of ${totalGB.toFixed(0)} GB)` : ""}
+              </p>
+              <p className="text-meta text-tag-unsure-text/80 mt-0.5">
+                Storage is running low. Consider cleaning up archives, duplicates, and dev artifacts.
+              </p>
+            </div>
+          </div>
+        )}
+
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
         {/* Top Headline Banner */}
-        <div className="rounded-lg border border-border bg-surface p-5">
+        <div className={`rounded-lg border p-5 ${
+          urgency === "critical" ? "border-tag-danger-text/40 bg-tag-danger-bg/30"
+          : urgency === "warning" ? "border-tag-unsure-text/30 bg-tag-unsure-bg/30"
+          : "border-border bg-surface"
+        }`}>
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <span className="flex h-7 w-7 items-center justify-center rounded-xs bg-surface-secondary text-btn-primary-bg">
-                  <TrendingUp className="h-4 w-4" />
+                <span className={`flex h-7 w-7 items-center justify-center rounded-xs ${
+                  urgency === "critical" ? "bg-tag-danger-bg text-tag-danger-text"
+                  : urgency === "warning" ? "bg-tag-unsure-bg text-tag-unsure-text"
+                  : "bg-surface-secondary text-btn-primary-bg"
+                }`}>
+                  {urgency === "critical" ? (
+                    <AlertOctagon className="h-4 w-4" />
+                  ) : urgency === "warning" ? (
+                    <AlertTriangle className="h-4 w-4" />
+                  ) : (
+                    <TrendingUp className="h-4 w-4" />
+                  )}
                 </span>
                 <h2 className="text-row font-semibold text-text-primary">
-                  {isHealthy
+                  {isBuildingBaseline
+                    ? urgency === "critical"
+                      ? `Critical Storage Level (${freeGB !== null ? freeGB.toFixed(1) : "—"} GB Free)`
+                      : urgency === "warning"
+                      ? `Low Storage Warning (${freeGB !== null ? freeGB.toFixed(1) : "—"} GB Free)`
+                      : "Collecting Baseline Data"
+                    : isHealthy
                     ? "Healthy Runway (> 1 Year)"
-                    : `Projected Full in ~${daysToFull} Days`}
+                    : daysToFull
+                    ? `Projected Full in ~${daysToFull} Days`
+                    : "Low Storage Detected"}
                 </h2>
                 <span
                   className={`rounded-xs px-2 py-0.5 text-meta font-medium ${
-                    isBootstrap
+                    isBuildingBaseline
+                      ? "bg-tag-unsure-bg text-tag-unsure-text"
+                      : isBootstrap
                       ? "bg-tag-unsure-bg text-tag-unsure-text"
                       : "bg-tag-safe-bg text-tag-safe-text"
                   }`}
                 >
-                  {isBootstrap ? "Estimated History" : `${totalForecast?.sampleCount || 0} Tracked Days`}
+                  {isBuildingBaseline
+                    ? `Baseline: ${data?.realTrackedDays ?? 0}/${data?.minDaysForProjection ?? 5} Days`
+                    : isBootstrap
+                    ? "Estimated History"
+                    : `${totalForecast?.sampleCount || 0} Tracked Days`}
                 </span>
               </div>
 
               <p className="text-meta text-text-secondary">
-                {isHealthy ? (
+                {isBuildingBaseline ? (
+                  `Horizon is recording daily snapshots (${data?.realTrackedDays ?? 0} of ${data?.minDaysForProjection ?? 5} collected) to establish your baseline growth rate before projecting exhaustion dates.`
+                ) : isHealthy ? (
                   "Your current disk growth rate is stable. No capacity alerts projected in the next 12 months."
                 ) : (
                   <>
                     Estimated fill date:{" "}
                     <strong className="text-text-primary">
-                      {totalForecast?.projectedFullDate || "Upcoming"}
+                      {totalForecast?.projectedFullDate || "Soon"}
                     </strong>{" "}
-                    (Confidence range: {totalForecast?.projectedFullDateLow || "earlier"} to{" "}
-                    {totalForecast?.projectedFullDateHigh || "later"})
+                    {totalForecast?.projectedFullDateLow && totalForecast?.projectedFullDateHigh && (
+                      <>(Confidence range: {totalForecast.projectedFullDateLow} to{" "}
+                      {totalForecast.projectedFullDateHigh})</>
+                    )}
                   </>
                 )}
               </p>
             </div>
 
-            {data?.fastestGrowing && data.fastestGrowing.slopeBytesPerDay > 0 && (
-              <div className="rounded-md border border-border bg-surface-secondary p-3 text-right">
-                <div className="text-meta text-text-secondary">Fastest Growing Driver</div>
-                <div className="text-meta-emphasis text-text-primary capitalize">
-                  {data.fastestGrowing.category} ({formatRate(data.fastestGrowing.slopeBytesPerDay)})
+            {/* Right side: free space metric + fastest growing driver */}
+            <div className="flex flex-col items-end gap-2">
+              {freeGB !== null && totalGB !== null && (
+                <div className={`rounded-md border p-3 text-right min-w-[160px] ${
+                  urgency === "critical" ? "border-tag-danger-text/30 bg-tag-danger-bg"
+                  : urgency === "warning" ? "border-tag-unsure-text/30 bg-tag-unsure-bg"
+                  : "border-border bg-surface-secondary"
+                }`}>
+                  <div className="flex items-center justify-end gap-1.5">
+                    <HardDrive className={`h-3.5 w-3.5 ${
+                      urgency === "critical" ? "text-tag-danger-text"
+                      : urgency === "warning" ? "text-tag-unsure-text"
+                      : "text-text-secondary"
+                    }`} />
+                    <span className="text-meta text-text-secondary">Free Space</span>
+                  </div>
+                  <div className={`text-meta-emphasis font-bold mt-0.5 ${
+                    urgency === "critical" ? "text-tag-danger-text"
+                    : urgency === "warning" ? "text-tag-unsure-text"
+                    : "text-text-primary"
+                  }`}>
+                    {freeGB.toFixed(1)} GB
+                  </div>
+                  <div className="text-meta text-text-tertiary">
+                    {usedPercent}% used · {totalGB.toFixed(0)} GB total
+                  </div>
+                  {/* Progress bar */}
+                  <div className="mt-2 h-1.5 w-full rounded-full bg-surface-secondary/60 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${
+                        urgency === "critical" ? "bg-tag-danger-text"
+                        : urgency === "warning" ? "bg-tag-unsure-text"
+                        : "bg-btn-primary-bg"
+                      }`}
+                      style={{ width: `${Math.min(100, usedPercent ?? 0)}%` }}
+                    />
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+              {data?.fastestGrowing && data.fastestGrowing.slopeBytesPerDay > 0 && (
+                <div className="rounded-md border border-border bg-surface-secondary p-3 text-right">
+                  <div className="text-meta text-text-secondary">Fastest Growing Driver</div>
+                  <div className="text-meta-emphasis text-text-primary capitalize">
+                    {data.fastestGrowing.category} ({formatRate(data.fastestGrowing.slopeBytesPerDay)})
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -319,7 +449,28 @@ export const ForecastTab = React.memo(function ForecastTab({
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={chartData} margin={{ top: 10, right: 20, bottom: 0, left: -10 }}>
                 <XAxis dataKey="date" stroke="var(--color-text-tertiary)" fontSize={11} />
-                <YAxis stroke="var(--color-text-tertiary)" fontSize={11} unit=" GB" />
+                <YAxis
+                  stroke="var(--color-text-tertiary)"
+                  fontSize={11}
+                  unit=" GB"
+                  domain={(() => {
+                    // Zoom Y-axis into the actual data range to show meaningful variation
+                    if (chartData.length === 0) return [0, 'auto'];
+                    const allValues = chartData.flatMap(d => [
+                      d.actualUsed, d.projectedUsed, d.projectedHigh
+                    ]).filter((v): v is number => v !== null && v !== undefined);
+                    if (allValues.length === 0) return [0, 'auto'];
+                    const minVal = Math.min(...allValues);
+                    const maxVal = Math.max(...allValues);
+                    const padding = Math.max(5, Math.round((maxVal - minVal) * 0.4));
+                    // Also show total disk capacity as a soft ceiling
+                    const totalGBRounded = totalGB ? Math.ceil(totalGB) : maxVal + padding;
+                    return [
+                      Math.max(0, Math.floor(minVal - padding)),
+                      Math.min(totalGBRounded, Math.ceil(maxVal + padding))
+                    ];
+                  })()}
+                />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: "var(--color-surface)",
@@ -328,7 +479,18 @@ export const ForecastTab = React.memo(function ForecastTab({
                     fontSize: "12px",
                     color: "var(--color-text-primary)",
                   }}
+                  formatter={(value: number, name: string) => [`${value} GB`, name]}
                 />
+                {/* Disk capacity ceiling reference line */}
+                {totalGB && (
+                  <ReferenceLine
+                    y={Math.round(totalGB)}
+                    stroke="var(--color-tag-danger-text)"
+                    strokeDasharray="3 3"
+                    strokeOpacity={0.5}
+                    label={{ value: `${Math.round(totalGB)} GB cap`, position: 'right', fontSize: 10, fill: 'var(--color-tag-danger-text)' }}
+                  />
+                )}
                 <Area
                   type="monotone"
                   dataKey="projectedHigh"
@@ -360,6 +522,65 @@ export const ForecastTab = React.memo(function ForecastTab({
             </ResponsiveContainer>
           </div>
         </div>
+
+        {/* High-Churn Pattern Insight Card */}
+        {isHighChurn && (
+          <div className="rounded-lg border border-tag-unsure-text/30 bg-tag-unsure-bg/20 p-5">
+            <div className="flex items-start gap-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xs bg-tag-unsure-bg text-tag-unsure-text">
+                <Activity className="h-4 w-4" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-row font-semibold text-text-primary">
+                  High-Churn Usage Detected
+                </h3>
+                <p className="mt-1 text-meta text-text-secondary">
+                  You regularly download and delete large amounts of data. Your net
+                  growth is near-zero, so the "days to full" figure is{" "}
+                  <strong className="text-text-primary">not meaningful</strong> for
+                  your pattern. What matters is your <strong className="text-text-primary">buffer headroom</strong>.
+                </p>
+
+                <div className="mt-3 grid grid-cols-3 gap-3">
+                  <div className="rounded-md border border-border bg-surface p-3 text-center">
+                    <p className="text-meta text-text-secondary">Current Free</p>
+                    <p className={`text-meta-emphasis font-bold mt-0.5 ${
+                      urgency === "critical" ? "text-tag-danger-text"
+                      : urgency === "warning" ? "text-tag-unsure-text"
+                      : "text-text-primary"
+                    }`}>
+                      {freeGB !== null ? freeGB.toFixed(1) : "—"} GB
+                    </p>
+                  </div>
+                  <div className="rounded-md border border-border bg-surface p-3 text-center">
+                    <p className="text-meta text-text-secondary">Lowest Recorded</p>
+                    <p className="text-meta-emphasis font-bold mt-0.5 text-tag-danger-text">
+                      {minFreeGB !== null ? minFreeGB.toFixed(1) : "—"} GB
+                    </p>
+                  </div>
+                  <div className="rounded-md border border-border bg-surface p-3 text-center">
+                    <p className="text-meta text-text-secondary">Swing Range</p>
+                    <p className="text-meta-emphasis font-bold mt-0.5 text-tag-unsure-text">
+                      ±{volatilityGB !== null ? volatilityGB.toFixed(1) : "—"} GB
+                    </p>
+                  </div>
+                </div>
+
+                <p className="mt-3 text-meta text-text-secondary">
+                  Your lowest recorded free space was{" "}
+                  <strong className="text-text-primary">
+                    {minFreeGB !== null ? minFreeGB.toFixed(1) : "—"} GB
+                  </strong>. Any download larger than that could fill your disk.
+                  Keep at least{" "}
+                  <strong className="text-text-primary">
+                    {minFreeGB !== null ? Math.ceil(minFreeGB + 2) : "5"} GB free
+                  </strong>{" "}
+                  as a safe buffer.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Two Column Grid: Growth Breakdown & What-If Simulator */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

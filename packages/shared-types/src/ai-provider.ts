@@ -13,6 +13,12 @@ export const AiProviderNameSchema = z.enum([
 export type AiProviderName = z.infer<typeof AiProviderNameSchema>;
 
 /**
+ * Ollama connection mode
+ */
+export const OllamaModeSchema = z.enum(["local", "remote"]);
+export type OllamaMode = z.infer<typeof OllamaModeSchema>;
+
+/**
  * Metadata for a single AI provider instance
  */
 export const AiProviderInfoSchema = z.object({
@@ -23,6 +29,10 @@ export const AiProviderInfoSchema = z.object({
   isConfigured: z.boolean(),
   hasKey: z.boolean(),
   isLocal: z.boolean(),
+  /** Ollama only: "local" uses 127.0.0.1:11434, "remote" uses a user-supplied base URL */
+  ollamaMode: OllamaModeSchema.optional(),
+  /** Ollama only: persisted remote base URL (e.g. https://my-vps:11434) */
+  baseUrl: z.string().optional(),
   availableModels: z.array(z.string()).optional(),
 });
 export type AiProviderInfo = z.infer<typeof AiProviderInfoSchema>;

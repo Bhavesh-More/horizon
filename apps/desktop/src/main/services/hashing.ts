@@ -13,6 +13,7 @@ import {
 } from "@horizon/shared-types";
 import {
   clusterDocumentEmbeddings,
+  isTextDocumentCandidate,
   ClusteredEmbeddingGroup,
 } from "./embeddings";
 
@@ -314,39 +315,53 @@ export async function runDuplicateDetection(
     }
 
     // ── STEP 3: SEMANTIC DOCUMENT EMBEDDINGS ───────────────────────────
+    // Pre-filter: only un-grouped eligible text documents with meaningful size (100 B - 2 MB)
+    const eligibleDocFiles = activeFiles.filter((f) => {
+      if (exactGroupedFileIds.has(f.id)) return false;
+      if (f.sizeBytes < 100 || f.sizeBytes > 2 * 1024 * 1024) return false;
+      return isTextDocumentCandidate(f.path, f.category);
+    });
+
+    // Take top 200 candidates by size to prevent CPU overload and thermal throttling
+    const documentCandidates = eligibleDocFiles
+      .sort((a, b) => b.sizeBytes - a.sizeBytes)
+      .slice(0, 200)
+      .map((f) => ({
+        fileId: f.id,
+        path: f.path,
+        sizeBytes: f.sizeBytes,
+        extension: f.extension,
+        category: f.category,
+        modifiedAt: f.modifiedAt,
+        createdAt: f.createdAt,
+      }));
+
     throttledProgress({
       event: "progress",
       phase: "embedding",
       processedFiles: 0,
-      totalFiles: activeFiles.length,
+      totalFiles: documentCandidates.length,
     });
 
-    const documentCandidates = activeFiles.map((f) => ({
-      fileId: f.id,
-      path: f.path,
-      sizeBytes: f.sizeBytes,
-      extension: f.extension,
-      category: f.category,
-      modifiedAt: f.modifiedAt,
-      createdAt: f.createdAt,
-    }));
-
     let embeddingGroups: ClusteredEmbeddingGroup[] = [];
-    try {
-      embeddingGroups = await clusterDocumentEmbeddings(
-        documentCandidates,
-        0.85,
-        (processed, total) => {
-          throttledProgress({
-            event: "progress",
-            phase: "embedding",
-            processedFiles: processed,
-            totalFiles: total,
-          });
-        }
-      );
-    } catch (embErr) {
-      console.warn("[hashing] Semantic embedding clustering skipped or failed:", embErr);
+    if (documentCandidates.length > 1) {
+      console.log(`[hashing] Running semantic embeddings on ${documentCandidates.length} candidate documents.`);
+      try {
+        embeddingGroups = await clusterDocumentEmbeddings(
+          documentCandidates,
+          0.85,
+          (processed, total) => {
+            throttledProgress({
+              event: "progress",
+              phase: "embedding",
+              processedFiles: processed,
+              totalFiles: total,
+            });
+          }
+        );
+      } catch (embErr) {
+        console.warn("[hashing] Semantic embedding clustering skipped or failed:", embErr);
+      }
     }
 
     // ── ATOMIC DATABASE UPDATE ───────────────────────────────────────────

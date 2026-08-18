@@ -11,6 +11,12 @@ import {
   AiProviderListOllamaModelsResponse,
   ForecastGetResponse,
   ForecastWhatIfResponse,
+  LargeFilesListResponse,
+  RecommendationGenerationEvent,
+  RecommendationRecord,
+  RecommendationsDismissResponse,
+  RecommendationsGetActiveResponse,
+  RecommendationsRegenerateResponse,
 } from "@horizon/shared-types";
 
 export {};
@@ -59,9 +65,14 @@ declare global {
         get: (category?: string) => Promise<{ ok: boolean; data?: ForecastGetResponse; error?: any }>;
         whatIf: (adjustments: Array<{ category: string; bytesToRemove: number }>) => Promise<{ ok: boolean; data?: ForecastWhatIfResponse; error?: any }>;
       };
+      recommendations: {
+        getActive: (scanRunId?: number) => Promise<{ ok: boolean; data?: RecommendationsGetActiveResponse; error?: any }>;
+        regenerate: (scanRunId?: number) => Promise<{ ok: boolean; data?: RecommendationsRegenerateResponse; error?: any }>;
+        dismiss: (recommendationId: number) => Promise<{ ok: boolean; data?: RecommendationsDismissResponse; error?: any }>;
+        getById: (recommendationId: number) => Promise<{ ok: boolean; data?: RecommendationRecord | null; error?: any }>;
+        onGenerationEvent: (callback: (event: RecommendationGenerationEvent) => void) => () => void;
+      };
     };
   }
 }
-
-
 

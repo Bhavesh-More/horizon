@@ -242,4 +242,40 @@ Keep the `Classes` block to the actual, real `className` strings from the compon
 - **Tokens used:** `background`, `surface`, `surface-secondary`, `border`, `text-primary`, `text-secondary`, `text-tertiary`, `storage-used`, `storage-free`, `btn-primary-bg`, `btn-primary-text`, `tag-safe-bg`, `tag-safe-text`, `tag-danger-bg`, `tag-danger-text`, `tag-unsure-bg`, `tag-unsure-text`, `text-title`, `text-row`, `text-meta`, `text-meta-emphasis`, `radius-lg`, `radius-md`, `radius-xs`
 - **Notes:** Dedicated storage forecasting interface featuring a Recharts ComposedChart with actual usage line, Theil-Sen projected trend, and 90% confidence envelope area; per-category monthly growth rate breakdown; and an interactive What-If Cleanup Simulator with instant runway calculation (+X days) and "Apply this plan" deep-links. Wrapped in `React.memo`.
 
+### RecommendationCard
+
+- **Path:** `apps/desktop/src/renderer/src/components/RecommendationCard.tsx`
+- **Used by:** Assistant tab
+- **Props:**
+  - `recommendation: RecommendationRecord`
+  - `onReview: (recommendation: RecommendationRecord) => void`
+  - `onDismiss: (recommendationId: number) => void`
+  - `isDismissing?: boolean`
+- **Classes:**
+  ```tsx
+  <article className="rounded-md border border-border bg-surface p-5 transition-colors duration-150 hover:border-border/80">
+    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm bg-surface-secondary text-text-secondary">
+    <span className="rounded-xs bg-tag-safe-bg px-1.5 py-0.5 text-meta font-medium text-tag-safe-text">
+    <button className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm text-text-tertiary transition-colors hover:bg-surface-secondary hover:text-text-primary disabled:cursor-not-allowed disabled:text-text-tertiary">
+  ```
+- **Tokens used:** `surface`, `surface-secondary`, `border`, `text-primary`, `text-secondary`, `text-tertiary`, `tag-safe-bg`, `tag-safe-text`, `btn-primary-bg`, `btn-primary-text`, `text-row`, `text-meta`, `radius-md`, `radius-sm`, `radius-xs`
+- **Notes:** Review-only recommendation card with semantic type icon, grounded title/reason, provider model metadata, Review CTA, and icon-only dismiss affordance. It never exposes direct cleanup or archive actions.
+
+### AssistantTab
+
+- **Path:** `apps/desktop/src/renderer/src/components/AssistantTab.tsx`
+- **Used by:** App main view (`activeTab === "Assistant"`)
+- **Props:**
+  - `onReviewRecommendation: (recommendation: RecommendationRecord) => void`
+  - `onOpenSettings: () => void`
+- **Classes:**
+  ```tsx
+  <div className="flex h-full flex-col overflow-hidden bg-background">
+    <header className="flex h-[72px] shrink-0 items-center justify-between border-b border-border bg-background px-6">
+    <main className="flex-1 overflow-y-auto p-6">
+    <div className="mb-4 rounded-md border border-border bg-surface p-4">
+    <div className="flex h-full items-center justify-center rounded-md border border-border bg-surface p-8 text-center">
+  ```
+- **Tokens used:** `background`, `surface`, `surface-secondary`, `border`, `text-primary`, `text-secondary`, `text-tertiary`, `tag-danger-text`, `btn-primary-bg`, `btn-primary-text`, `text-title`, `text-row`, `text-meta`, `text-meta-emphasis`, `radius-md`, `radius-sm`
+- **Notes:** Assistant v1 recommendation surface with cards, Regenerate, provider setup route, loading, error, no-results, and scan-waiting states. No chat input is present in Phase 9.
 

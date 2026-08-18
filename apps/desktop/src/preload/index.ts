@@ -6,6 +6,11 @@ import {
   ScanProgressEvent,
   CleanupTrashRequestSchema,
   DuplicateDetectionProgressSchema,
+  RecommendationGenerationEventSchema,
+  RecommendationsDismissRequestSchema,
+  RecommendationsGetActiveRequestSchema,
+  RecommendationsGetByIdRequestSchema,
+  RecommendationsRegenerateRequestSchema,
 } from "@horizon/shared-types";
 
 contextBridge.exposeInMainWorld("horizon", {
@@ -118,7 +123,40 @@ contextBridge.exposeInMainWorld("horizon", {
       return await ipcRenderer.invoke("forecast:whatIf", { adjustments });
     },
   },
+  recommendations: {
+    getActive: async (scanRunId?: number) => {
+      const payload = RecommendationsGetActiveRequestSchema.parse(
+        scanRunId ? { scanRunId } : {}
+      );
+      return await ipcRenderer.invoke("recommendations:getActive", payload);
+    },
+    regenerate: async (scanRunId?: number) => {
+      const payload = RecommendationsRegenerateRequestSchema.parse(
+        scanRunId ? { scanRunId } : {}
+      );
+      return await ipcRenderer.invoke("recommendations:regenerate", payload);
+    },
+    dismiss: async (recommendationId: number) => {
+      const payload = RecommendationsDismissRequestSchema.parse({ recommendationId });
+      return await ipcRenderer.invoke("recommendations:dismiss", payload);
+    },
+    getById: async (recommendationId: number) => {
+      const payload = RecommendationsGetByIdRequestSchema.parse({ recommendationId });
+      return await ipcRenderer.invoke("recommendations:getById", payload);
+    },
+    onGenerationEvent: (
+      callback: (event: unknown) => void
+    ) => {
+      const listener = (_event: IpcRendererEvent, data: unknown) => {
+        const parsed = RecommendationGenerationEventSchema.safeParse(data);
+        if (parsed.success) callback(parsed.data);
+      };
+      ipcRenderer.on("recommendations:generation", listener);
+      return () => {
+        ipcRenderer.removeListener("recommendations:generation", listener);
+      };
+    },
+  },
 });
-
 
 

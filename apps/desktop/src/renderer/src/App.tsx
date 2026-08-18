@@ -17,6 +17,8 @@ import { UnusedFilesTab } from "./components/UnusedFilesTab";
 import { LargeFilesTab } from "./components/LargeFilesTab";
 import { SettingsTab } from "./components/SettingsTab";
 import { ForecastTab } from "./components/ForecastTab";
+import { AssistantTab } from "./components/AssistantTab";
+import { RecommendationRecord } from "@horizon/shared-types";
 
 const TABS = [
   { label: "Overview", icon: LayoutGrid },
@@ -38,6 +40,18 @@ export default function App() {
     startTransition(() => {
       setActiveTab(label);
     });
+  };
+
+  const handleReviewRecommendation = (recommendation: RecommendationRecord) => {
+    const tabByTarget = {
+      duplicates: "Duplicates",
+      unused: "Unused Files",
+      large_files: "Large Files",
+      forecast: "Forecast",
+      overview: "Overview",
+    } as const;
+
+    handleSelectTab(tabByTarget[recommendation.targetTab]);
   };
 
   // Global ⌘1-⌘9 / Ctrl+1-9 keyboard shortcut listener
@@ -125,6 +139,12 @@ export default function App() {
         <div className={activeTab === "Forecast" ? "h-full flex flex-col" : "hidden"}>
           <ForecastTab onNavigateToTab={handleSelectTab} />
         </div>
+        <div className={activeTab === "Assistant" ? "h-full flex flex-col" : "hidden"}>
+          <AssistantTab
+            onReviewRecommendation={handleReviewRecommendation}
+            onOpenSettings={() => handleSelectTab("Settings")}
+          />
+        </div>
         <div className={activeTab === "Settings" ? "h-full flex flex-col" : "hidden"}>
           <SettingsTab />
         </div>
@@ -133,6 +153,7 @@ export default function App() {
           activeTab !== "Unused Files" &&
           activeTab !== "Large Files" &&
           activeTab !== "Forecast" &&
+          activeTab !== "Assistant" &&
           activeTab !== "Settings" && (
             <div className="flex h-full flex-col">
             <header className="flex h-[72px] shrink-0 items-center justify-between border-b border-border bg-background px-6">

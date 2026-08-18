@@ -13,6 +13,7 @@ import { registerLargeFilesIpc } from "./ipc/large-files";
 import { registerSystemIpc } from "./ipc/system";
 import { registerAiProviderIpc } from "./ipc/ai-provider";
 import { registerForecastIpc } from "./ipc/forecast";
+import { registerRecommendationsIpc } from "./ipc/recommendations";
 import { initSnapshotScheduler, bootstrapHistory } from "./services/scheduler";
 
 
@@ -55,10 +56,10 @@ app.whenReady().then(() => {
   registerSystemIpc();
   registerAiProviderIpc();
   registerForecastIpc();
+  registerRecommendationsIpc();
   createWindow();
 });
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
-

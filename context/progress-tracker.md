@@ -145,15 +145,15 @@ Living document. Updated as work is completed — mark a checkbox only when a ph
 
 ## Phase 9 — AI recommendations
 
-- [ ] Triggered after scan + duplicate detection complete for a `scan_run`
-- [ ] Grounded prompt assembly (metadata only, never raw file contents)
-- [ ] Zod-validated structured LLM output with one-shot repair retry
-- [ ] `recommendations` table
-- [ ] IPC: `recommendations:list`
-- [ ] Assistant tab v1: recommendation cards with Review/Dismiss
+- [x] Triggered after scan + duplicate detection complete for a `scan_run`
+- [x] Grounded prompt assembly (metadata only, never raw file contents)
+- [x] Zod-validated structured LLM output with one-shot repair retry
+- [x] `recommendations` table
+- [x] IPC: `recommendations:list`
+- [x] Assistant tab v1: recommendation cards with Review/Dismiss
 
 **Exit criteria:** recommendation text visibly references real file names/paths/sizes from the actual test scan, not generic boilerplate; a deliberately malformed model response triggers the repair pass instead of a crash.
-**Status notes:**
+**Status notes:** Phase 9 implementation landed with shared recommendation schemas, `recommendation_batches` and `recommendations` tables, metadata-only context builder, prompt builder, deterministic validator, generation service, typed IPC/preload API, automatic post-duplicate-generation trigger, and Assistant v1 UI. Verified with desktop typecheck, desktop Vitest suite, targeted shared schema test, and SQLite migration smoke check. Live provider QA against an actual completed scan remains the final exit-criteria check.
 
 ---
 
@@ -231,11 +231,10 @@ Living document. Updated as work is completed — mark a checkbox only when a ph
 Re-verify these whenever the phase that introduces or touches them is marked done — see `architecture.md` §6 and `code-standards.md` §9 for full definitions.
 
 - [x] I-1–I-4 (destructive-action safety) — checked at Phase 2, and re-checked at every phase adding a new Trash/Archive button (3, 4, 5, 11)
-- [ ] I-5–I-7 (privacy & secrets) — checked at Phase 6, and re-checked at every phase adding a new LLM call (7, 9, 10)
+- [x] I-5–I-7 (privacy & secrets) — checked at Phase 6, and re-checked at every phase adding a new LLM call (7, 9, 10)
 - [ ] I-8–I-10 (architectural boundaries) — continuous, enforced via lint/review from Phase 0 onward
-- [ ] I-11 (migrations) — checked on every schema change, any phase
+- [x] I-11 (migrations) — checked on every schema change, any phase
 - [ ] I-12 (worker threads) — checked at Phases 1 and 3
-- [ ] I-13 (no double-counted bytes) — checked at Phases 1 and 8
+- [x] I-13 (no double-counted bytes) — checked at Phases 1, 8, and 9
 - [x] I-14 (audit log integrity) — checked from Phase 2 onward, verified end-to-end at Phase 12
 - [x] I-15 (IPC payload validation) — checked on every new IPC channel, any phase
-

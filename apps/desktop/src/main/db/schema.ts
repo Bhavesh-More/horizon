@@ -139,3 +139,90 @@ export const forecasts = sqliteTable("forecasts", {
   confidenceScore: real("confidence_score").notNull(),
 });
 
+export const recommendationBatches = sqliteTable(
+  "recommendation_batches",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    scanRunId: integer("scan_run_id")
+      .notNull()
+      .references(() => scanRuns.id),
+    generationId: text("generation_id").notNull().unique(),
+    sourceForecastId: integer("source_forecast_id").references(() => forecasts.id),
+    status: text("status", {
+      enum: ["running", "complete", "no_results", "failed", "stale"],
+    }).notNull(),
+    errorCategory: text("error_category", {
+      enum: [
+        "not_configured",
+        "provider_unavailable",
+        "authentication_failed",
+        "quota_exceeded",
+        "network_error",
+        "timeout",
+        "invalid_response",
+        "unknown",
+      ],
+    }),
+    errorMessage: text("error_message"),
+    provider: text("provider"),
+    modelName: text("model_name"),
+    startedAt: text("started_at").notNull(),
+    completedAt: text("completed_at"),
+  },
+  (table) => ({
+    idxRecommendationBatchesScanRunId: index(
+      "idx_recommendation_batches_scan_run_id"
+    ).on(table.scanRunId),
+    idxRecommendationBatchesGenerationId: index(
+      "idx_recommendation_batches_generation_id"
+    ).on(table.generationId),
+    idxRecommendationBatchesStatus: index(
+      "idx_recommendation_batches_status"
+    ).on(table.status),
+  })
+);
+
+export const recommendations = sqliteTable(
+  "recommendations",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    scanRunId: integer("scan_run_id")
+      .notNull()
+      .references(() => scanRuns.id),
+    batchId: integer("batch_id")
+      .notNull()
+      .references(() => recommendationBatches.id, { onDelete: "cascade" }),
+    generationId: text("generation_id").notNull(),
+    recommendationType: text("recommendation_type", {
+      enum: ["duplicate", "unused", "large_file", "archive", "forecast", "cleanup"],
+    }).notNull(),
+    title: text("title").notNull(),
+    reason: text("reason").notNull(),
+    priority: integer("priority").notNull(),
+    relatedFileIdsJson: text("related_file_ids_json").notNull(),
+    targetTab: text("target_tab", {
+      enum: ["duplicates", "unused", "large_files", "forecast", "overview"],
+    }).notNull(),
+    action: text("action", { enum: ["review"] }).notNull(),
+    status: text("status", {
+      enum: ["pending", "accepted", "dismissed"],
+    }).notNull().default("pending"),
+    provider: text("provider"),
+    modelName: text("model_name"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => ({
+    idxRecommendationsScanRunId: index("idx_recommendations_scan_run_id").on(
+      table.scanRunId
+    ),
+    idxRecommendationsGenerationId: index(
+      "idx_recommendations_generation_id"
+    ).on(table.generationId),
+    idxRecommendationsStatus: index("idx_recommendations_status").on(
+      table.status
+    ),
+    idxRecommendationsCreatedAt: index("idx_recommendations_created_at").on(
+      table.createdAt
+    ),
+  })
+);

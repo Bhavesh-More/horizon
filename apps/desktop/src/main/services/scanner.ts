@@ -16,6 +16,7 @@ import { eq, desc, sql, ne, and, or, like, isNotNull } from "drizzle-orm";
 import { db } from "../db/client";
 import { scanRuns, fileIndex } from "../db/schema";
 import { runDuplicateDetection } from "./hashing";
+import { generateRecommendationsForScan } from "./recommendations";
 import {
   FileItem,
   GetLatestScanResponse,
@@ -252,6 +253,7 @@ export async function startScan(scope: string[]): Promise<{ scanRunId: number }>
           // Auto-trigger duplicate detection after scan completion and full DB commit
           console.log(`[scanner] Storage scan complete. All file_index rows committed to DB. Triggering duplicate detection...`);
           await runDuplicateDetection(scanRunId);
+          void generateRecommendationsForScan(scanRunId);
         }
       })
       .catch((err) => {

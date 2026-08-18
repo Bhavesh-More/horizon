@@ -6,3 +6,4 @@ export * from "./unused-files";
 export * from "./large-files";
 export * from "./ai-provider";
 export * from "./forecast";
+export * from "./recommendations";

@@ -7,6 +7,12 @@ import {
   CleanupTrashRequestSchema,
   DuplicateDetectionProgressSchema,
   RecommendationGenerationEventSchema,
+  AssistantChatRequestSchema,
+  AssistantStreamEventSchema,
+  ArchiveContentsRequestSchema,
+  ArchiveCreateRequestSchema,
+  ArchiveListRequestSchema,
+  ArchiveRestoreRequestSchema,
   RecommendationsDismissRequestSchema,
   RecommendationsGetActiveRequestSchema,
   RecommendationsGetByIdRequestSchema,
@@ -157,6 +163,44 @@ contextBridge.exposeInMainWorld("horizon", {
       };
     },
   },
+  assistant: {
+    chat: async (message: string, scanRunId?: number) => {
+      const payload = AssistantChatRequestSchema.parse(
+        scanRunId ? { message, scanRunId } : { message }
+      );
+      return await ipcRenderer.invoke("assistant:chat", payload);
+    },
+    onStream: (callback: (event: unknown) => void) => {
+      const listener = (_event: IpcRendererEvent, data: unknown) => {
+        const parsed = AssistantStreamEventSchema.safeParse(data);
+        if (parsed.success) callback(parsed.data);
+      };
+      ipcRenderer.on("assistant:stream", listener);
+      return () => {
+        ipcRenderer.removeListener("assistant:stream", listener);
+      };
+    },
+  },
+  archive: {
+    create: async (fileIds: number[], destinationDir?: string) => {
+      const payload = ArchiveCreateRequestSchema.parse(
+        destinationDir ? { fileIds, destinationDir } : { fileIds }
+      );
+      return await ipcRenderer.invoke("archive:create", payload);
+    },
+    list: async () => {
+      const payload = ArchiveListRequestSchema.parse({});
+      return await ipcRenderer.invoke("archive:list", payload);
+    },
+    contents: async (archiveId: number) => {
+      const payload = ArchiveContentsRequestSchema.parse({ archiveId });
+      return await ipcRenderer.invoke("archive:contents", payload);
+    },
+    restore: async (archiveId: number, restoreRoot?: string) => {
+      const payload = ArchiveRestoreRequestSchema.parse(
+        restoreRoot ? { archiveId, restoreRoot } : { archiveId }
+      );
+      return await ipcRenderer.invoke("archive:restore", payload);
+    },
+  },
 });
-
-

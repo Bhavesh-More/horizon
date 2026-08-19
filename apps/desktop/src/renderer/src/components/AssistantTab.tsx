@@ -1,12 +1,24 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   AlertCircle,
+  Bot,
   CheckCircle2,
+  MessageSquare,
   RefreshCw,
+  Send,
   Settings,
   Sparkles,
+  User,
 } from "lucide-react";
 import {
+  AssistantStreamEvent,
   RecommendationGenerationState,
   RecommendationRecord,
   RecommendationsGetActiveResponse,
@@ -39,6 +51,33 @@ interface AssistantTabProps {
   onOpenSettings: () => void;
 }
 
+type ChatMessage = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  state: "streaming" | "done" | "error";
+};
+
+function appendAssistantChunk(
+  messages: ChatMessage[],
+  requestId: string,
+  chunk: string
+): ChatMessage[] {
+  const existingIndex = messages.findIndex((message) => message.id === requestId);
+  if (existingIndex === -1) {
+    return [
+      ...messages,
+      { id: requestId, role: "assistant", content: chunk, state: "streaming" },
+    ];
+  }
+
+  return messages.map((message, index) =>
+    index === existingIndex
+      ? { ...message, content: `${message.content}${chunk}`, state: "streaming" }
+      : message
+  );
+}
+
 export const AssistantTab = React.memo(function AssistantTab({
   onReviewRecommendation,
   onOpenSettings,
@@ -47,6 +86,11 @@ export const AssistantTab = React.memo(function AssistantTab({
   const [isLoading, setIsLoading] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [dismissingId, setDismissingId] = useState<number | null>(null);
+  const [chatInput, setChatInput] = useState("");
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [activeRequestId, setActiveRequestId] = useState<string | null>(null);
+  const [chatError, setChatError] = useState<string | null>(null);
+  const transcriptRef = useRef<HTMLDivElement | null>(null);
 
   const generationState = data?.generationState ?? "idle";
   const recommendations = data?.recommendations ?? [];
@@ -85,6 +129,71 @@ export const AssistantTab = React.memo(function AssistantTab({
     };
   }, [loadRecommendations]);
 
+  useEffect(() => {
+    const unsubscribeAssistant = window.horizon?.assistant?.onStream(
+      (event: AssistantStreamEvent) => {
+        if (event.event === "started") {
+          setActiveRequestId(event.requestId);
+          setChatError(null);
+          return;
+        }
+
+        if (event.event === "chunk" && event.chunk) {
+          setChatMessages((messages) =>
+            appendAssistantChunk(messages, event.requestId, event.chunk ?? "")
+          );
+          return;
+        }
+
+        if (event.event === "completed") {
+          setActiveRequestId(null);
+          setChatMessages((messages) =>
+            messages.map((message) =>
+              message.id === event.requestId ? { ...message, state: "done" } : message
+            )
+          );
+          return;
+        }
+
+        if (event.event === "failed") {
+          const message = event.message || "The assistant request failed.";
+          setActiveRequestId(null);
+          setChatError(message);
+          setChatMessages((messages) => {
+            const hasPlaceholder = messages.some((item) => item.id === event.requestId);
+            if (!hasPlaceholder) {
+              return [
+                ...messages,
+                {
+                  id: event.requestId,
+                  role: "assistant",
+                  content: message,
+                  state: "error",
+                },
+              ];
+            }
+            return messages.map((item) =>
+              item.id === event.requestId
+                ? { ...item, content: message, state: "error" }
+                : item
+            );
+          });
+        }
+      }
+    );
+
+    return () => {
+      unsubscribeAssistant?.();
+    };
+  }, []);
+
+  useEffect(() => {
+    transcriptRef.current?.scrollTo({
+      top: transcriptRef.current.scrollHeight,
+      behavior: "smooth",
+    });
+  }, [chatMessages]);
+
   const handleRegenerate = async () => {
     if (!window.horizon?.recommendations) return;
     setIsRegenerating(true);
@@ -105,6 +214,40 @@ export const AssistantTab = React.memo(function AssistantTab({
     } finally {
       setDismissingId(null);
     }
+  };
+
+  const handleChatSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!window.horizon?.assistant || activeRequestId) return;
+
+    const message = chatInput.trim();
+    if (!message) return;
+
+    setChatInput("");
+    setChatError(null);
+
+    const res = await window.horizon.assistant.chat(message);
+    if (res.ok && res.data) {
+      setActiveRequestId(res.data.requestId);
+      setChatMessages((messages) => [
+        ...messages,
+        {
+          id: `user-${res.data!.requestId}`,
+          role: "user",
+          content: message,
+          state: "done",
+        },
+        {
+          id: res.data!.requestId,
+          role: "assistant",
+          content: "",
+          state: "streaming",
+        },
+      ]);
+      return;
+    }
+
+    setChatError(res.error?.message || "Failed to start assistant chat.");
   };
 
   const emptyTitle = useMemo(() => {
@@ -171,40 +314,149 @@ export const AssistantTab = React.memo(function AssistantTab({
           </div>
         </div>
 
-        {isLoading && recommendations.length === 0 ? (
-          <div className="flex h-full items-center justify-center rounded-md border border-border bg-surface p-8 text-center">
-            <div>
-              <RefreshCw className="mx-auto h-5 w-5 animate-spin text-text-secondary" aria-hidden="true" />
-              <p className="mt-3 text-row font-semibold text-text-primary">
-                Loading recommendations
-              </p>
+        <section className="mb-4">
+          {isLoading && recommendations.length === 0 ? (
+            <div className="flex min-h-[180px] items-center justify-center rounded-md border border-border bg-surface p-8 text-center">
+              <div>
+                <RefreshCw className="mx-auto h-5 w-5 animate-spin text-text-secondary" aria-hidden="true" />
+                <p className="mt-3 text-row font-semibold text-text-primary">
+                  Loading recommendations
+                </p>
+              </div>
             </div>
-          </div>
-        ) : recommendations.length === 0 ? (
-          <div className="flex h-full items-center justify-center rounded-md border border-border bg-surface p-8 text-center">
-            <div>
-              <Sparkles className="mx-auto h-6 w-6 text-text-secondary" aria-hidden="true" />
-              <p className="mt-3 text-row font-semibold text-text-primary">
-                {emptyTitle}
-              </p>
-              <p className="mt-1 max-w-sm text-meta text-text-secondary">
-                {stateSubtitle(generationState)}
-              </p>
+          ) : recommendations.length === 0 ? (
+            <div className="flex min-h-[180px] items-center justify-center rounded-md border border-border bg-surface p-8 text-center">
+              <div>
+                <Sparkles className="mx-auto h-6 w-6 text-text-secondary" aria-hidden="true" />
+                <p className="mt-3 text-row font-semibold text-text-primary">
+                  {emptyTitle}
+                </p>
+                <p className="mt-1 max-w-sm text-meta text-text-secondary">
+                  {stateSubtitle(generationState)}
+                </p>
+              </div>
             </div>
+          ) : (
+            <div className="grid gap-4">
+              {recommendations.map((recommendation) => (
+                <RecommendationCard
+                  key={recommendation.id}
+                  recommendation={recommendation}
+                  onReview={onReviewRecommendation}
+                  onDismiss={handleDismiss}
+                  isDismissing={dismissingId === recommendation.id}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="rounded-md border border-border bg-surface">
+          <div className="flex items-center justify-between border-b border-border px-4 py-3">
+            <div className="flex min-w-0 items-center gap-2">
+              <MessageSquare className="h-4 w-4 shrink-0 text-text-secondary" aria-hidden="true" />
+              <h2 className="truncate text-row font-semibold text-text-primary">
+                Ask Horizon
+              </h2>
+            </div>
+            {activeRequestId ? (
+              <span className="inline-flex items-center gap-2 text-meta text-text-secondary">
+                <RefreshCw className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                Thinking
+              </span>
+            ) : null}
           </div>
-        ) : (
-          <div className="grid gap-4">
-            {recommendations.map((recommendation) => (
-              <RecommendationCard
-                key={recommendation.id}
-                recommendation={recommendation}
-                onReview={onReviewRecommendation}
-                onDismiss={handleDismiss}
-                isDismissing={dismissingId === recommendation.id}
+
+          <div
+            ref={transcriptRef}
+            className="max-h-[260px] min-h-[180px] overflow-y-auto px-4 py-3"
+          >
+            {chatMessages.length === 0 ? (
+              <div className="flex h-[150px] items-center justify-center text-center">
+                <div>
+                  <Bot className="mx-auto h-6 w-6 text-text-secondary" aria-hidden="true" />
+                  <p className="mt-3 text-row font-semibold text-text-primary">
+                    Ask about the latest scan
+                  </p>
+                  <p className="mt-1 max-w-md text-meta text-text-secondary">
+                    Try duplicates in Downloads, large videos, unused archives,
+                    or forecast risk.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="grid gap-3">
+                {chatMessages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={`flex gap-3 ${
+                      message.role === "user" ? "justify-end" : "justify-start"
+                    }`}
+                  >
+                    {message.role === "assistant" ? (
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-surface-secondary text-text-secondary">
+                        <Bot className="h-4 w-4" aria-hidden="true" />
+                      </div>
+                    ) : null}
+                    <div
+                      className={`max-w-[75%] rounded-md border border-border px-3 py-2 ${
+                        message.role === "user"
+                          ? "bg-accent-primary text-text-inverse"
+                          : "bg-background text-text-primary"
+                      }`}
+                    >
+                      <p className="whitespace-pre-wrap break-words text-meta">
+                        {message.content ||
+                          (message.state === "streaming" ? "Thinking..." : "")}
+                      </p>
+                    </div>
+                    {message.role === "user" ? (
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-surface-secondary text-text-secondary">
+                        <User className="h-4 w-4" aria-hidden="true" />
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <form onSubmit={handleChatSubmit} className="border-t border-border p-3">
+            {chatError ? (
+              <p className="mb-2 text-meta-emphasis text-tag-danger-text">
+                {chatError}
+              </p>
+            ) : null}
+            <div className="flex items-end gap-2">
+              <label htmlFor="assistant-chat-input" className="sr-only">
+                Ask Horizon
+              </label>
+              <textarea
+                id="assistant-chat-input"
+                value={chatInput}
+                onChange={(event) => setChatInput(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    event.currentTarget.form?.requestSubmit();
+                  }
+                }}
+                placeholder="Ask about duplicate groups, large files, unused files, or forecast risk"
+                rows={2}
+                disabled={!!activeRequestId}
+                className="min-h-[48px] flex-1 resize-none rounded-md border border-border bg-background px-3 py-2 text-row text-text-primary placeholder:text-text-tertiary focus:border-accent-primary focus:outline-none disabled:cursor-not-allowed disabled:opacity-70"
               />
-            ))}
-          </div>
-        )}
+              <Button
+                type="submit"
+                disabled={!chatInput.trim() || !!activeRequestId}
+                className="inline-flex h-12 items-center gap-2 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                <Send className="h-4 w-4" aria-hidden="true" />
+                Send
+              </Button>
+            </div>
+          </form>
+        </section>
       </main>
     </div>
   );

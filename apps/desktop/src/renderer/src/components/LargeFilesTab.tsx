@@ -99,6 +99,8 @@ export const LargeFilesTab = React.memo(function LargeFilesTab() {
   // Modal state
   const [isTrashModalOpen, setIsTrashModalOpen] = useState(false);
   const [isTrashing, setIsTrashing] = useState(false);
+  const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
 
   // Refs for current state to prevent stale closures in async handlers
   const minSizeRef = useRef(minSizeBytes);
@@ -245,7 +247,7 @@ export const LargeFilesTab = React.memo(function LargeFilesTab() {
     for (const file of data.files) {
       if (selectedFileIds.has(file.fileId)) {
         totalBytes += file.sizeBytes;
-        if (isTrashModalOpen) {
+        if (isTrashModalOpen || isArchiveModalOpen) {
           const fileName =
             file.path.split("/").pop() ??
             file.path.split("\\").pop() ??
@@ -266,7 +268,7 @@ export const LargeFilesTab = React.memo(function LargeFilesTab() {
       totalBytes,
       totalBytesFormatted: formatBytes(totalBytes),
     };
-  }, [data.files, selectedFileIds, isTrashModalOpen]);
+  }, [data.files, selectedFileIds, isTrashModalOpen, isArchiveModalOpen]);
 
   // Execute trash cleanup
   const handleConfirmTrash = async () => {
@@ -284,6 +286,24 @@ export const LargeFilesTab = React.memo(function LargeFilesTab() {
       console.error("Failed to trash large files:", err);
     } finally {
       setIsTrashing(false);
+    }
+  };
+
+  const handleConfirmArchive = async () => {
+    if (selectedFileIds.size === 0 || !window.horizon?.archive) return;
+    setIsArchiving(true);
+    try {
+      const idsToArchive = Array.from(selectedFileIds);
+      const res = await window.horizon.archive.create(idsToArchive);
+      if (res.ok && res.data) {
+        setIsArchiveModalOpen(false);
+        setSelectedFileIds(new Set());
+        await fetchLargeFiles();
+      }
+    } catch (err) {
+      console.error("Failed to archive large files:", err);
+    } finally {
+      setIsArchiving(false);
     }
   };
 
@@ -419,16 +439,15 @@ export const LargeFilesTab = React.memo(function LargeFilesTab() {
               <span>Move to Trash</span>
             </Button>
 
-            {/* Archive Button (Stubbed until Phase 11) */}
-            <button
+            <Button
               type="button"
-              disabled
-              title="Archiving will be available in Phase 11 (Archive bundle support)"
-              className="flex items-center gap-1.5 rounded-xs px-3 py-1.5 text-meta font-medium text-text-tertiary bg-surface-secondary opacity-60 cursor-not-allowed border border-border"
+              onClick={() => setIsArchiveModalOpen(true)}
+              disabled={selectedFileIds.size === 0 || isArchiving}
+              className="flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-70"
             >
               <Archive className="h-4 w-4" />
               <span>Archive</span>
-            </button>
+            </Button>
           </div>
         </section>
 
@@ -551,6 +570,17 @@ export const LargeFilesTab = React.memo(function LargeFilesTab() {
         confirmLabel="Move to Trash"
         onConfirm={handleConfirmTrash}
         isLoading={isTrashing}
+      />
+      <ConfirmationModal
+        open={isArchiveModalOpen}
+        onOpenChange={setIsArchiveModalOpen}
+        title="Archive Selected Large Files?"
+        description="The selected files will be compressed into a verified archive bundle first. Originals move to operating system Trash only after verification succeeds."
+        items={selectedItemsSummary.items}
+        totalBytesFormatted={selectedItemsSummary.totalBytesFormatted}
+        confirmLabel="Create Archive"
+        onConfirm={handleConfirmArchive}
+        isLoading={isArchiving}
       />
     </div>
   );

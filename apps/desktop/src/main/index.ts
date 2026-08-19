@@ -14,6 +14,8 @@ import { registerSystemIpc } from "./ipc/system";
 import { registerAiProviderIpc } from "./ipc/ai-provider";
 import { registerForecastIpc } from "./ipc/forecast";
 import { registerRecommendationsIpc } from "./ipc/recommendations";
+import { registerAssistantIpc } from "./ipc/assistant";
+import { registerArchiveIpc } from "./ipc/archive";
 import { initSnapshotScheduler, bootstrapHistory } from "./services/scheduler";
 
 
@@ -57,6 +59,8 @@ app.whenReady().then(() => {
   registerAiProviderIpc();
   registerForecastIpc();
   registerRecommendationsIpc();
+  registerAssistantIpc();
+  registerArchiveIpc();
   createWindow();
 });
 

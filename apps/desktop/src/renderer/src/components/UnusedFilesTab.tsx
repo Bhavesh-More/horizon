@@ -53,6 +53,8 @@ export const UnusedFilesTab = React.memo(function UnusedFilesTab() {
   // Modal state
   const [isTrashModalOpen, setIsTrashModalOpen] = useState(false);
   const [isTrashing, setIsTrashing] = useState(false);
+  const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
 
   // Keep refs for active filters so async callbacks don't have stale closures
   const thresholdRef = useRef(thresholdDays);
@@ -179,7 +181,7 @@ export const UnusedFilesTab = React.memo(function UnusedFilesTab() {
       for (const file of group.files) {
         if (selectedFileIds.has(file.fileId)) {
           totalBytes += file.sizeBytes;
-          if (isTrashModalOpen) {
+          if (isTrashModalOpen || isArchiveModalOpen) {
             const fileName =
               file.path.split("/").pop() ??
               file.path.split("\\").pop() ??
@@ -201,7 +203,7 @@ export const UnusedFilesTab = React.memo(function UnusedFilesTab() {
       totalBytes,
       totalBytesFormatted: formatBytes(totalBytes),
     };
-  }, [data.groups, selectedFileIds, isTrashModalOpen]);
+  }, [data.groups, selectedFileIds, isTrashModalOpen, isArchiveModalOpen]);
 
   // Execute trash cleanup via Phase 2 deletion safety core
   const handleConfirmTrash = async () => {
@@ -219,6 +221,24 @@ export const UnusedFilesTab = React.memo(function UnusedFilesTab() {
       console.error("Failed to trash unused files:", err);
     } finally {
       setIsTrashing(false);
+    }
+  };
+
+  const handleConfirmArchive = async () => {
+    if (selectedFileIds.size === 0 || !window.horizon?.archive) return;
+    setIsArchiving(true);
+    try {
+      const idsToArchive = Array.from(selectedFileIds);
+      const res = await window.horizon.archive.create(idsToArchive);
+      if (res.ok && res.data) {
+        setIsArchiveModalOpen(false);
+        setSelectedFileIds(new Set());
+        await fetchUnusedFiles();
+      }
+    } catch (err) {
+      console.error("Failed to archive unused files:", err);
+    } finally {
+      setIsArchiving(false);
     }
   };
 
@@ -330,16 +350,15 @@ export const UnusedFilesTab = React.memo(function UnusedFilesTab() {
               <span>Move to Trash</span>
             </Button>
 
-            {/* Archive Button (Stubbed until Phase 11) */}
-            <button
+            <Button
               type="button"
-              disabled
-              title="Archiving will be available in Phase 11 (Archive bundle support)"
-              className="flex items-center gap-1.5 rounded-xs px-3 py-1.5 text-meta font-medium text-text-tertiary bg-surface-secondary opacity-60 cursor-not-allowed border border-border"
+              onClick={() => setIsArchiveModalOpen(true)}
+              disabled={selectedFileIds.size === 0 || isArchiving}
+              className="flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-70"
             >
               <Archive className="h-4 w-4" />
               <span>Archive</span>
-            </button>
+            </Button>
           </div>
         </section>
 
@@ -387,6 +406,17 @@ export const UnusedFilesTab = React.memo(function UnusedFilesTab() {
         confirmLabel="Move to Trash"
         onConfirm={handleConfirmTrash}
         isLoading={isTrashing}
+      />
+      <ConfirmationModal
+        open={isArchiveModalOpen}
+        onOpenChange={setIsArchiveModalOpen}
+        title="Archive Selected Unused Files?"
+        description="The selected files will be compressed into a verified archive bundle first. Originals move to operating system Trash only after verification succeeds."
+        items={selectedItemsSummary.items}
+        totalBytesFormatted={selectedItemsSummary.totalBytesFormatted}
+        confirmLabel="Create Archive"
+        onConfirm={handleConfirmArchive}
+        isLoading={isArchiving}
       />
     </div>
   );

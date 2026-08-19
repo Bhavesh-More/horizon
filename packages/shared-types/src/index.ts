@@ -7,3 +7,5 @@ export * from "./large-files";
 export * from "./ai-provider";
 export * from "./forecast";
 export * from "./recommendations";
+export * from "./assistant";
+export * from "./archive";

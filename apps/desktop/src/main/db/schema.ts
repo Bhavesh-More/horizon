@@ -226,3 +226,27 @@ export const recommendations = sqliteTable(
     ),
   })
 );
+
+export const archives = sqliteTable(
+  "archives",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    bundlePath: text("bundle_path").notNull().unique(),
+    destinationDir: text("destination_dir").notNull(),
+    contentsJson: text("contents_json").notNull(),
+    originalFileCount: integer("original_file_count").notNull(),
+    originalBytes: integer("original_bytes").notNull(),
+    archiveSizeBytes: integer("archive_size_bytes").notNull(),
+    status: text("status", {
+      enum: ["active", "restored", "deleted"],
+    })
+      .notNull()
+      .default("active"),
+    createdAt: text("created_at").notNull(),
+    restoredAt: text("restored_at"),
+  },
+  (table) => ({
+    idxArchivesStatus: index("idx_archives_status").on(table.status),
+    idxArchivesCreatedAt: index("idx_archives_created_at").on(table.createdAt),
+  })
+);

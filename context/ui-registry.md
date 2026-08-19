@@ -274,8 +274,36 @@ Keep the `Classes` block to the actual, real `className` strings from the compon
     <header className="flex h-[72px] shrink-0 items-center justify-between border-b border-border bg-background px-6">
     <main className="flex-1 overflow-y-auto p-6">
     <div className="mb-4 rounded-md border border-border bg-surface p-4">
-    <div className="flex h-full items-center justify-center rounded-md border border-border bg-surface p-8 text-center">
+    <div className="flex min-h-[180px] items-center justify-center rounded-md border border-border bg-surface p-8 text-center">
+    <section className="rounded-md border border-border bg-surface">
+    <div className="flex items-center justify-between border-b border-border px-4 py-3">
+    <div className="max-h-[260px] min-h-[180px] overflow-y-auto px-4 py-3">
+    <div className="flex h-[150px] items-center justify-center text-center">
+    <div className="max-w-[75%] rounded-md border border-border px-3 py-2 bg-background text-text-primary">
+    <div className="max-w-[75%] rounded-md border border-border px-3 py-2 bg-accent-primary text-text-inverse">
+    <form onSubmit={handleChatSubmit} className="border-t border-border p-3">
+    <textarea className="min-h-[48px] flex-1 resize-none rounded-md border border-border bg-background px-3 py-2 text-row text-text-primary placeholder:text-text-tertiary focus:border-accent-primary focus:outline-none disabled:cursor-not-allowed disabled:opacity-70" />
   ```
-- **Tokens used:** `background`, `surface`, `surface-secondary`, `border`, `text-primary`, `text-secondary`, `text-tertiary`, `tag-danger-text`, `btn-primary-bg`, `btn-primary-text`, `text-title`, `text-row`, `text-meta`, `text-meta-emphasis`, `radius-md`, `radius-sm`
-- **Notes:** Assistant v1 recommendation surface with cards, Regenerate, provider setup route, loading, error, no-results, and scan-waiting states. No chat input is present in Phase 9.
+- **Tokens used:** `background`, `surface`, `surface-secondary`, `border`, `accent-primary`, `text-primary`, `text-secondary`, `text-tertiary`, `text-inverse`, `tag-danger-text`, `btn-primary-bg`, `btn-primary-text`, `text-title`, `text-row`, `text-meta`, `text-meta-emphasis`, `radius-md`, `radius-sm`
+- **Notes:** Assistant recommendation and chat surface with cards, Regenerate, provider setup route, loading, error, no-results, scan-waiting states, local transcript state, streaming answer rendering, and a validated chat input. Chat is review-only and does not expose direct cleanup or archive actions.
 
+### ArchiveTab
+
+- **Path:** `apps/desktop/src/renderer/src/components/ArchiveTab.tsx`
+- **Used by:** App main view (`activeTab === "Archive"`)
+- **Props:** None
+- **Classes:**
+  ```tsx
+  <div className="flex h-full flex-col overflow-hidden bg-background">
+    <header className="flex h-[72px] shrink-0 items-center justify-between border-b border-border bg-background px-6">
+    <main className="flex-1 overflow-y-auto p-6">
+    <section className="mb-4 rounded-md border border-border bg-surface p-4">
+    <div className="flex h-64 items-center justify-center rounded-md border border-border bg-surface text-meta text-text-secondary">
+    <div className="flex h-64 flex-col items-center justify-center rounded-md border border-border bg-surface p-8 text-center">
+    <section className="overflow-hidden rounded-md border border-border bg-surface">
+    <button className="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-surface-secondary/50">
+    <span className="rounded-xs px-1.5 py-0.5 font-medium bg-tag-safe-bg text-tag-safe-text">
+    <span className="rounded-xs px-1.5 py-0.5 font-medium bg-tag-unsure-bg text-tag-unsure-text">
+  ```
+- **Tokens used:** `background`, `surface`, `surface-secondary`, `border`, `text-primary`, `text-secondary`, `text-tertiary`, `tag-safe-bg`, `tag-safe-text`, `tag-unsure-bg`, `tag-unsure-text`, `tag-danger-text`, `btn-primary-bg`, `btn-primary-text`, `text-title`, `text-row`, `text-meta`, `text-meta-emphasis`, `radius-md`, `radius-sm`, `radius-xs`
+- **Notes:** Archive bundle browser with summary card, loading, empty, error, bundle selection, contents preview, active/restored status badges, and restore action. Matches the list-and-panel pattern used by file management tabs and keeps archive removal out of Phase 11.

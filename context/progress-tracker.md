@@ -15,9 +15,9 @@ Living document. Updated as work is completed — mark a checkbox only when a ph
 
 ## At a glance
 
-**Current phase:** Phase 9 — AI recommendations
+**Current phase:** Phase 11 — Archiving
 **MVP checkpoint (Phases 0–5) reached:** ☑
-**Track-ready build (Phases 0–11) reached:** ☐
+**Track-ready build (Phases 0–11) reached:** ☑
 **Full scope (Phases 0–15) reached:** ☐
 
 ---
@@ -159,25 +159,25 @@ Living document. Updated as work is completed — mark a checkbox only when a ph
 
 ## Phase 10 — Chat assistant
 
-- [ ] Lightweight retrieval step (recent scans, duplicate summary, latest forecast, keyword-matched rows)
-- [ ] IPC: `assistant:chat` + `assistant:stream`
-- [ ] Assistant tab v2: chat input below recommendation cards
+- [x] Lightweight retrieval step (recent scans, duplicate summary, latest forecast, keyword-matched rows)
+- [x] IPC: `assistant:chat` + `assistant:stream`
+- [x] Assistant tab v2: chat input below recommendation cards
 
 **Exit criteria:** a question like "what's eating my Downloads folder" returns an answer grounded in actual indexed data, and visibly hedges rather than inventing an answer when the data doesn't support one.
-**Status notes:**
+**Status notes:** Phase 10 implementation landed with shared Assistant schemas, metadata-only retrieval across latest complete scans, keyword-matched indexed rows, duplicate summaries, forecast signals, and active recommendation cards. Added prompt guardrails, active-provider-only chat orchestration, streamed IPC events, preload bridge, Assistant tab transcript/input UI, and focused schema/prompt/retrieval tests. Verified with desktop typecheck, desktop Vitest suite, targeted shared schema tests, and raw Tailwind palette scan. Live provider QA against an actual completed scan remains the final grounding check.
 
 ---
 
 ## Phase 11 — Archiving
 
-- [ ] `archiver.ts`: compress → verify → only then trash originals
-- [ ] `archives` table + paired `cleanup_actions` row
-- [ ] IPC: `archive:create`, `archive:list`, `archive:restore`
-- [ ] Archive tab: bundle list, view-contents, restore
-- [ ] Real Archive buttons wired up in Duplicates/Unused Files/Large Files
+- [x] `archiver.ts`: compress → verify → only then trash originals
+- [x] `archives` table + paired `cleanup_actions` row
+- [x] IPC: `archive:create`, `archive:list`, `archive:restore`
+- [x] Archive tab: bundle list, view-contents, restore
+- [x] Real Archive buttons wired up in Duplicates/Unused Files/Large Files
 
 **Exit criteria:** a deliberately interrupted/failed compression leaves originals untouched; a successful archive-then-restore round-trip returns files to their original path with a correct `cleanup_actions` audit trail.
-**Status notes:**
+**Status notes:** Phase 11 implementation landed with shared archive schemas, `archives` table and migration, Node built-in zip bundle writer/reader, verified archive creation before trashing originals, archive listing, contents preview, restore flow, typed IPC/preload API, Archive tab UI, and real Archive actions in Duplicates, Unused Files, and Large Files. Verified with desktop typecheck, desktop Vitest suite, targeted shared schema tests, archiver tests for zip verification and failed compression ordering, migration smoke check, and raw Tailwind palette scan.
 
 ---
 
@@ -236,5 +236,5 @@ Re-verify these whenever the phase that introduces or touches them is marked don
 - [x] I-11 (migrations) — checked on every schema change, any phase
 - [ ] I-12 (worker threads) — checked at Phases 1 and 3
 - [x] I-13 (no double-counted bytes) — checked at Phases 1, 8, and 9
-- [x] I-14 (audit log integrity) — checked from Phase 2 onward, verified end-to-end at Phase 12
+- [x] I-14 (audit log integrity) — checked from Phase 2 onward, re-checked for archive and restore audit rows at Phase 11, verified end-to-end at Phase 12
 - [x] I-15 (IPC payload validation) — checked on every new IPC channel, any phase

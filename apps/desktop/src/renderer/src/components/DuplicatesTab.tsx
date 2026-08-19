@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { RefreshCw, Trash2, Layers, CheckSquare, Square, AlertCircle, Sparkles } from "lucide-react";
+import { Archive, RefreshCw, Trash2, Layers, CheckSquare, Square, AlertCircle, Sparkles } from "lucide-react";
 import { Button, ConfirmationModal, ConfirmationModalItem } from "@horizon/ui";
 import { DuplicateGroup, DuplicateDetectionProgress, ScanProgressEvent } from "@horizon/shared-types";
 import { DuplicateGroupCard } from "./DuplicateGroupCard";
@@ -29,6 +29,8 @@ export const DuplicatesTab = React.memo(function DuplicatesTab() {
   // Modal state
   const [isTrashModalOpen, setIsTrashModalOpen] = useState(false);
   const [isTrashing, setIsTrashing] = useState(false);
+  const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
 
   // Keep a ref to current filterType for use in async callbacks without stale closures
   const filterTypeRef = useRef(filterType);
@@ -168,7 +170,7 @@ export const DuplicatesTab = React.memo(function DuplicatesTab() {
       for (const member of group.members) {
         if (selectedFileIds.has(member.fileId)) {
           totalBytes += member.sizeBytes;
-          if (isTrashModalOpen) {
+          if (isTrashModalOpen || isArchiveModalOpen) {
             const fileName = member.path.split("/").pop() ?? member.path.split("\\").pop() ?? member.path;
             selectedList.push({
               id: member.fileId,
@@ -183,7 +185,7 @@ export const DuplicatesTab = React.memo(function DuplicatesTab() {
     }
 
     return { items: selectedList, totalBytes, totalBytesFormatted: formatBytes(totalBytes) };
-  }, [groups, selectedFileIds, isTrashModalOpen]);
+  }, [groups, selectedFileIds, isTrashModalOpen, isArchiveModalOpen]);
 
   const handleConfirmTrash = async () => {
     if (selectedFileIds.size === 0 || !window.horizon?.cleanup) return;
@@ -199,6 +201,23 @@ export const DuplicatesTab = React.memo(function DuplicatesTab() {
       console.error("Failed to trash files:", err);
     } finally {
       setIsTrashing(false);
+    }
+  };
+
+  const handleConfirmArchive = async () => {
+    if (selectedFileIds.size === 0 || !window.horizon?.archive) return;
+    setIsArchiving(true);
+    try {
+      const idsToArchive = Array.from(selectedFileIds);
+      const res = await window.horizon.archive.create(idsToArchive);
+      if (res.ok && res.data) {
+        setIsArchiveModalOpen(false);
+        await fetchDuplicates();
+      }
+    } catch (err) {
+      console.error("Failed to archive duplicate files:", err);
+    } finally {
+      setIsArchiving(false);
     }
   };
 
@@ -336,6 +355,15 @@ export const DuplicatesTab = React.memo(function DuplicatesTab() {
               <Trash2 className="h-4 w-4" />
               <span>Move Selected to Trash</span>
             </Button>
+            <Button
+              type="button"
+              onClick={() => setIsArchiveModalOpen(true)}
+              disabled={selectedFileIds.size === 0 || isArchiving}
+              className="flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              <Archive className="h-4 w-4" />
+              <span>Archive</span>
+            </Button>
           </div>
         </section>
 
@@ -380,6 +408,17 @@ export const DuplicatesTab = React.memo(function DuplicatesTab() {
         confirmLabel="Move to Trash"
         onConfirm={handleConfirmTrash}
         isLoading={isTrashing}
+      />
+      <ConfirmationModal
+        open={isArchiveModalOpen}
+        onOpenChange={setIsArchiveModalOpen}
+        title="Archive Selected Duplicates?"
+        description="The selected duplicate files will be compressed into a verified archive bundle first. Originals move to operating system Trash only after verification succeeds."
+        items={selectedItemsSummary.items}
+        totalBytesFormatted={selectedItemsSummary.totalBytesFormatted}
+        confirmLabel="Create Archive"
+        onConfirm={handleConfirmArchive}
+        isLoading={isArchiving}
       />
     </div>
   );

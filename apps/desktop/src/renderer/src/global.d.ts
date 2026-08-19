@@ -17,6 +17,12 @@ import {
   RecommendationsDismissResponse,
   RecommendationsGetActiveResponse,
   RecommendationsRegenerateResponse,
+  AssistantChatStartResponse,
+  AssistantStreamEvent,
+  ArchiveContentsResponse,
+  ArchiveCreateResponse,
+  ArchiveListResponse,
+  ArchiveRestoreResponse,
 } from "@horizon/shared-types";
 
 export {};
@@ -72,7 +78,16 @@ declare global {
         getById: (recommendationId: number) => Promise<{ ok: boolean; data?: RecommendationRecord | null; error?: any }>;
         onGenerationEvent: (callback: (event: RecommendationGenerationEvent) => void) => () => void;
       };
+      assistant: {
+        chat: (message: string, scanRunId?: number) => Promise<{ ok: boolean; data?: AssistantChatStartResponse; error?: any }>;
+        onStream: (callback: (event: AssistantStreamEvent) => void) => () => void;
+      };
+      archive: {
+        create: (fileIds: number[], destinationDir?: string) => Promise<{ ok: boolean; data?: ArchiveCreateResponse; error?: any }>;
+        list: () => Promise<{ ok: boolean; data?: ArchiveListResponse; error?: any }>;
+        contents: (archiveId: number) => Promise<{ ok: boolean; data?: ArchiveContentsResponse; error?: any }>;
+        restore: (archiveId: number, restoreRoot?: string) => Promise<{ ok: boolean; data?: ArchiveRestoreResponse; error?: any }>;
+      };
     };
   }
 }
-

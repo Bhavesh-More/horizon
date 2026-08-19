@@ -18,6 +18,7 @@ import { LargeFilesTab } from "./components/LargeFilesTab";
 import { SettingsTab } from "./components/SettingsTab";
 import { ForecastTab } from "./components/ForecastTab";
 import { AssistantTab } from "./components/AssistantTab";
+import { ArchiveTab } from "./components/ArchiveTab";
 import { RecommendationRecord } from "@horizon/shared-types";
 
 const TABS = [
@@ -145,6 +146,9 @@ export default function App() {
             onOpenSettings={() => handleSelectTab("Settings")}
           />
         </div>
+        <div className={activeTab === "Archive" ? "h-full flex flex-col" : "hidden"}>
+          <ArchiveTab />
+        </div>
         <div className={activeTab === "Settings" ? "h-full flex flex-col" : "hidden"}>
           <SettingsTab />
         </div>
@@ -154,6 +158,7 @@ export default function App() {
           activeTab !== "Large Files" &&
           activeTab !== "Forecast" &&
           activeTab !== "Assistant" &&
+          activeTab !== "Archive" &&
           activeTab !== "Settings" && (
             <div className="flex h-full flex-col">
             <header className="flex h-[72px] shrink-0 items-center justify-between border-b border-border bg-background px-6">

@@ -250,3 +250,9 @@ export const archives = sqliteTable(
     idxArchivesCreatedAt: index("idx_archives_created_at").on(table.createdAt),
   })
 );
+
+export const settings = sqliteTable("settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});

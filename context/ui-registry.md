@@ -307,3 +307,42 @@ Keep the `Classes` block to the actual, real `className` strings from the compon
   ```
 - **Tokens used:** `background`, `surface`, `surface-secondary`, `border`, `text-primary`, `text-secondary`, `text-tertiary`, `tag-safe-bg`, `tag-safe-text`, `tag-unsure-bg`, `tag-unsure-text`, `tag-danger-text`, `btn-primary-bg`, `btn-primary-text`, `text-title`, `text-row`, `text-meta`, `text-meta-emphasis`, `radius-md`, `radius-sm`, `radius-xs`
 - **Notes:** Archive bundle browser with summary card, loading, empty, error, bundle selection, contents preview, active/restored status badges, and restore action. Matches the list-and-panel pattern used by file management tabs and keeps archive removal out of Phase 11.
+
+### FirstRunGate
+
+- **Path:** `apps/desktop/src/renderer/src/components/FirstRunGate.tsx`
+- **Used by:** App shell when `settings:getOnboardingState` returns incomplete
+- **Props:**
+  - `onComplete: () => void`
+- **Classes:**
+  ```tsx
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-background p-6">
+    <div className="flex h-[560px] w-[680px] overflow-hidden rounded-lg border border-border bg-surface-overlay">
+    <aside className="w-[180px] shrink-0 border-r border-border bg-surface p-5">
+    <div className="flex items-center gap-2 rounded-sm px-2 py-2 text-row bg-surface-secondary font-medium text-text-primary">
+    <main className="flex min-w-0 flex-1 flex-col p-6">
+    <div className="rounded-md border border-border bg-surface p-4">
+    <div className="overflow-hidden rounded-md border border-border bg-surface">
+    <button className="rounded-sm border border-btn-secondary-border bg-surface px-3 py-2 text-row text-text-primary transition-colors hover:bg-surface-secondary">
+  ```
+- **Tokens used:** `background`, `surface`, `surface-secondary`, `surface-overlay`, `border`, `text-primary`, `text-secondary`, `text-tertiary`, `btn-primary-bg`, `btn-primary-text`, `btn-secondary-border`, `storage-used`, `storage-free`, `tag-safe-bg`, `tag-safe-text`, `tag-danger-bg`, `tag-danger-text`, `tag-unsure-bg`, `tag-unsure-text`, `text-title`, `text-row`, `text-meta`, `radius-lg`, `radius-md`, `radius-sm`, `radius-xs`
+- **Notes:** Full screen first run wizard overlay with welcome, folder permissions, AI setup, scan scope review, real first scan progress, and results summary. It blocks navigation until onboarding is persisted through the typed settings IPC surface.
+
+### ActivityTab
+
+- **Path:** `apps/desktop/src/renderer/src/components/ActivityTab.tsx`
+- **Used by:** App main view (`activeTab === "Activity"`)
+- **Props:** None
+- **Classes:**
+  ```tsx
+  <div className="flex h-full flex-col bg-background text-text-primary">
+    <header className="flex h-[72px] shrink-0 items-center justify-between border-b border-border bg-background px-6">
+    <div className="grid grid-cols-4 gap-4">
+    <div className="rounded-md border border-border bg-surface p-4">
+    <div className="flex items-center justify-between rounded-md border border-border bg-surface px-4 py-3">
+    <div className="rounded-md border border-border bg-surface divide-y divide-border overflow-hidden">
+    <button className="flex items-center gap-1.5 rounded-sm border border-border bg-surface px-2.5 py-1 text-meta font-medium text-text-primary hover:bg-surface-secondary transition-colors cursor-pointer">
+  ```
+- **Tokens used:** `background`, `surface`, `surface-secondary`, `border`, `text-primary`, `text-secondary`, `text-tertiary`, `tag-safe-bg`, `tag-safe-text`, `tag-check-bg`, `tag-check-text`, `tag-danger-bg`, `tag-danger-text`, `btn-primary-bg`, `btn-primary-text`, `text-title`, `text-row`, `text-meta`, `text-meta-emphasis`, `radius-md`, `radius-sm`, `radius-xs`
+- **Notes:** Unified reverse-chronological audit log view across scans, trash actions, archives, and restores. Features metric summary cards, type filtering, expandable impacted file paths, and safe "Open Trash" Undo affordance.
+

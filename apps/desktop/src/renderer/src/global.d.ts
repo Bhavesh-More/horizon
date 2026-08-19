@@ -23,6 +23,13 @@ import {
   ArchiveCreateResponse,
   ArchiveListResponse,
   ArchiveRestoreResponse,
+  ActivityListResponse,
+  ActivityOpenTrashResponse,
+  SettingsCompleteOnboardingResponse,
+  SettingsGetOnboardingStateResponse,
+  SettingsGetScanScopeResponse,
+  SettingsRequestScanScopeResponse,
+  SettingsSaveScanScopeResponse,
 } from "@horizon/shared-types";
 
 export {};
@@ -87,6 +94,17 @@ declare global {
         list: () => Promise<{ ok: boolean; data?: ArchiveListResponse; error?: any }>;
         contents: (archiveId: number) => Promise<{ ok: boolean; data?: ArchiveContentsResponse; error?: any }>;
         restore: (archiveId: number, restoreRoot?: string) => Promise<{ ok: boolean; data?: ArchiveRestoreResponse; error?: any }>;
+      };
+      activity: {
+        list: (limit?: number) => Promise<{ ok: boolean; data?: ActivityListResponse; error?: any }>;
+        openTrash: () => Promise<{ ok: boolean; data?: ActivityOpenTrashResponse; error?: any }>;
+      };
+      settings: {
+        getOnboardingState: () => Promise<{ ok: boolean; data?: SettingsGetOnboardingStateResponse; error?: any }>;
+        requestScanScope: () => Promise<{ ok: boolean; data?: SettingsRequestScanScopeResponse; error?: any }>;
+        getScanScope: () => Promise<{ ok: boolean; data?: SettingsGetScanScopeResponse; error?: any }>;
+        saveScanScope: (scope: string[]) => Promise<{ ok: boolean; data?: SettingsSaveScanScopeResponse; error?: any }>;
+        completeOnboarding: (scanScope: string[], aiProviderSkipped?: boolean) => Promise<{ ok: boolean; data?: SettingsCompleteOnboardingResponse; error?: any }>;
       };
     };
   }

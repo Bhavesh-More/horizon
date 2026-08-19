@@ -15,7 +15,7 @@ Living document. Updated as work is completed — mark a checkbox only when a ph
 
 ## At a glance
 
-**Current phase:** Phase 11 — Archiving
+**Current phase:** Phase 13 — Onboarding wizard
 **MVP checkpoint (Phases 0–5) reached:** ☑
 **Track-ready build (Phases 0–11) reached:** ☑
 **Full scope (Phases 0–15) reached:** ☐
@@ -183,22 +183,22 @@ Living document. Updated as work is completed — mark a checkbox only when a ph
 
 ## Phase 12 — Activity / audit log tab
 
-- [ ] Activity tab: reverse-chronological log of scans/cleans/archives/restores
-- [ ] `Undo` affordance on recently-trashed items
+- [x] Activity tab: reverse-chronological log of scans/cleans/archives/restores
+- [x] `Undo` affordance on recently-trashed items
 
 **Exit criteria:** every action taken across the whole app during earlier-phase testing shows up correctly here, in order, with correct byte totals.
-**Status notes:**
+**Status notes:** Phase 12 implementation landed with shared activity schemas, unified reverse-chronological audit query merging `scan_runs` and `cleanup_actions` records, typed IPC/preload bridge (`activity:list`, `activity:openTrash`), Activity tab UI with metric cards, type filtering, expandable impacted path lists, and safe OS Trash Undo affordance. Verified with desktop typecheck (`tsc --noEmit`), shared schema tests, main service vitest suite, and raw Tailwind palette scans.
 
 ---
 
 ## Phase 13 — Onboarding wizard
 
-- [ ] Full-screen modal wizard, blocks navigation until complete (`FirstRunGate` pattern)
-- [ ] Welcome → folder-picker/Full Disk Access → AI provider setup → scan scope → first scan → results summary → Overview
-- [ ] IPC: `settings:requestScanScope`, `settings:save`
+- [x] Full-screen modal wizard, blocks navigation until complete (`FirstRunGate` pattern)
+- [x] Welcome → folder-picker/Full Disk Access → AI provider setup → scan scope → first scan → results summary → Overview
+- [x] IPC: `settings:requestScanScope`, `settings:save`
 
 **Exit criteria:** a completely fresh install, with no prior state, walks a new user end-to-end to a populated Overview tab without needing developer intervention.
-**Status notes:**
+**Status notes:** Phase 13 implementation landed with shared settings schemas, a `settings` table and migration, main process settings persistence, native scan-scope folder picker IPC, typed preload bridge, full-screen `FirstRunGate` wizard, real first-scan progress handling, onboarding completion persistence, and Overview scans using the saved scope. Verified with desktop typecheck, desktop Vitest suite, targeted shared schema tests, migration smoke check, and raw Tailwind palette scan.
 
 ---
 

@@ -19,6 +19,8 @@ import { SettingsTab } from "./components/SettingsTab";
 import { ForecastTab } from "./components/ForecastTab";
 import { AssistantTab } from "./components/AssistantTab";
 import { ArchiveTab } from "./components/ArchiveTab";
+import { ActivityTab } from "./components/ActivityTab";
+import { FirstRunGate } from "./components/FirstRunGate";
 import { RecommendationRecord } from "@horizon/shared-types";
 
 const TABS = [
@@ -35,9 +37,11 @@ const TABS = [
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>("Overview");
+  const [isOnboardingComplete, setIsOnboardingComplete] = useState<boolean | null>(null);
   const [, startTransition] = useTransition();
 
   const handleSelectTab = (label: string) => {
+    if (isOnboardingComplete === false) return;
     startTransition(() => {
       setActiveTab(label);
     });
@@ -58,6 +62,7 @@ export default function App() {
   // Global ⌘1-⌘9 / Ctrl+1-9 keyboard shortcut listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isOnboardingComplete === false) return;
       if ((e.metaKey || e.ctrlKey) && e.key >= "1" && e.key <= "9") {
         const index = parseInt(e.key, 10) - 1;
         if (index >= 0 && index < TABS.length) {
@@ -70,10 +75,32 @@ export default function App() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOnboardingComplete]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadOnboardingState() {
+      if (!window.horizon?.settings) {
+        if (isMounted) setIsOnboardingComplete(true);
+        return;
+      }
+
+      const result = await window.horizon.settings.getOnboardingState();
+      if (isMounted) {
+        setIsOnboardingComplete(result.ok ? Boolean(result.data?.completed) : true);
+      }
+    }
+
+    loadOnboardingState();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   return (
-    <div className="flex h-screen bg-background text-text-primary overflow-hidden">
+    <div className="relative flex h-screen bg-background text-text-primary overflow-hidden">
       {/* Sidebar Navigation */}
       <aside className="flex w-[240px] shrink-0 flex-col border-r border-border bg-surface px-2 pb-2 pt-10">
         <div className="flex items-center gap-2 px-3 pb-6">
@@ -149,6 +176,9 @@ export default function App() {
         <div className={activeTab === "Archive" ? "h-full flex flex-col" : "hidden"}>
           <ArchiveTab />
         </div>
+        <div className={activeTab === "Activity" ? "h-full flex flex-col" : "hidden"}>
+          <ActivityTab />
+        </div>
         <div className={activeTab === "Settings" ? "h-full flex flex-col" : "hidden"}>
           <SettingsTab />
         </div>
@@ -159,6 +189,7 @@ export default function App() {
           activeTab !== "Forecast" &&
           activeTab !== "Assistant" &&
           activeTab !== "Archive" &&
+          activeTab !== "Activity" &&
           activeTab !== "Settings" && (
             <div className="flex h-full flex-col">
             <header className="flex h-[72px] shrink-0 items-center justify-between border-b border-border bg-background px-6">
@@ -187,6 +218,14 @@ export default function App() {
           </div>
         )}
       </div>
+      {isOnboardingComplete === false && (
+        <FirstRunGate
+          onComplete={() => {
+            setActiveTab("Overview");
+            setIsOnboardingComplete(true);
+          }}
+        />
+      )}
     </div>
   );
 }

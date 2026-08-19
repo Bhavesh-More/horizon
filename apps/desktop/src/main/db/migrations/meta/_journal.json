@@ -64,6 +64,13 @@
       "when": 1786262400000,
       "tag": "0008_archives",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1786266000000,
+      "tag": "0009_settings",
+      "breakpoints": true
     }
   ]
 }

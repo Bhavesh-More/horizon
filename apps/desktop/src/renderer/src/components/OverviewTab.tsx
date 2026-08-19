@@ -51,6 +51,7 @@ export const OverviewTab = React.memo(function OverviewTab({
   const [totalBytes, setTotalBytes] = useState(0);
   const [lastCompletedAt, setLastCompletedAt] = useState<string | null>(null);
   const [forecastData, setForecastData] = useState<ForecastGetResponse | null>(null);
+  const [scanScopeLabel, setScanScopeLabel] = useState("Default folders");
 
   // Mutable stream buffer ref to decouple high-frequency IPC stream from React rendering
   const streamRef = useRef({
@@ -182,14 +183,23 @@ export const OverviewTab = React.memo(function OverviewTab({
     if (isScanning || !window.horizon?.scan) return;
     try {
       setIsScanning(true);
-      await window.horizon.scan.start([
-        "Documents",
-        "Desktop",
-        "Downloads",
-        "Pictures",
-        "Movies",
-        "Music",
-      ]);
+      const scopeResult = await window.horizon.settings.getScanScope();
+      const scope = scopeResult.ok && scopeResult.data?.scope.length
+        ? scopeResult.data.scope
+        : [
+            "Documents",
+            "Desktop",
+            "Downloads",
+            "Pictures",
+            "Movies",
+            "Music",
+          ];
+      setScanScopeLabel(
+        scope.length > 3
+          ? `${scope.slice(0, 3).map((item) => item.split("/").filter(Boolean).pop() || item).join(", ")} +${scope.length - 3}`
+          : scope.map((item) => item.split("/").filter(Boolean).pop() || item).join(", ")
+      );
+      await window.horizon.scan.start(scope);
     } catch (err) {
       console.error("Failed to start scan:", err);
       setIsScanning(false);
@@ -269,7 +279,7 @@ export const OverviewTab = React.memo(function OverviewTab({
               across {totalFiles.toLocaleString()} files
             </span>
             <span className="text-text-secondary">
-              Scope: Documents, Desktop, Downloads, Media
+              Scope: {scanScopeLabel}
             </span>
           </div>
         </section>

@@ -13,10 +13,17 @@ import {
   ArchiveCreateRequestSchema,
   ArchiveListRequestSchema,
   ArchiveRestoreRequestSchema,
+  ActivityListRequestSchema,
+  ActivityOpenTrashRequestSchema,
   RecommendationsDismissRequestSchema,
   RecommendationsGetActiveRequestSchema,
   RecommendationsGetByIdRequestSchema,
   RecommendationsRegenerateRequestSchema,
+  SettingsCompleteOnboardingRequestSchema,
+  SettingsGetOnboardingStateRequestSchema,
+  SettingsGetScanScopeRequestSchema,
+  SettingsRequestScanScopeRequestSchema,
+  SettingsSaveScanScopeRequestSchema,
 } from "@horizon/shared-types";
 
 contextBridge.exposeInMainWorld("horizon", {
@@ -201,6 +208,43 @@ contextBridge.exposeInMainWorld("horizon", {
         restoreRoot ? { archiveId, restoreRoot } : { archiveId }
       );
       return await ipcRenderer.invoke("archive:restore", payload);
+    },
+  },
+  activity: {
+    list: async (limit?: number) => {
+      const payload = ActivityListRequestSchema.parse(
+        limit ? { limit } : undefined
+      );
+      return await ipcRenderer.invoke("activity:list", payload);
+    },
+    openTrash: async () => {
+      const payload = ActivityOpenTrashRequestSchema.parse({});
+      return await ipcRenderer.invoke("activity:openTrash", payload);
+    },
+  },
+  settings: {
+    getOnboardingState: async () => {
+      const payload = SettingsGetOnboardingStateRequestSchema.parse({});
+      return await ipcRenderer.invoke("settings:getOnboardingState", payload);
+    },
+    requestScanScope: async () => {
+      const payload = SettingsRequestScanScopeRequestSchema.parse({});
+      return await ipcRenderer.invoke("settings:requestScanScope", payload);
+    },
+    getScanScope: async () => {
+      const payload = SettingsGetScanScopeRequestSchema.parse({});
+      return await ipcRenderer.invoke("settings:getScanScope", payload);
+    },
+    saveScanScope: async (scope: string[]) => {
+      const payload = SettingsSaveScanScopeRequestSchema.parse({ scope });
+      return await ipcRenderer.invoke("settings:saveScanScope", payload);
+    },
+    completeOnboarding: async (scanScope: string[], aiProviderSkipped?: boolean) => {
+      const payload = SettingsCompleteOnboardingRequestSchema.parse({
+        scanScope,
+        aiProviderSkipped,
+      });
+      return await ipcRenderer.invoke("settings:completeOnboarding", payload);
     },
   },
 });

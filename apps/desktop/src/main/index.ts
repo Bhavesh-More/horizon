@@ -16,6 +16,8 @@ import { registerForecastIpc } from "./ipc/forecast";
 import { registerRecommendationsIpc } from "./ipc/recommendations";
 import { registerAssistantIpc } from "./ipc/assistant";
 import { registerArchiveIpc } from "./ipc/archive";
+import { registerActivityIpc } from "./ipc/activity";
+import { registerSettingsIpc } from "./ipc/settings";
 import { initSnapshotScheduler, bootstrapHistory } from "./services/scheduler";
 
 
@@ -61,6 +63,8 @@ app.whenReady().then(() => {
   registerRecommendationsIpc();
   registerAssistantIpc();
   registerArchiveIpc();
+  registerActivityIpc();
+  registerSettingsIpc();
   createWindow();
 });
 

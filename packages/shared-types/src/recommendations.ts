@@ -198,19 +198,43 @@ export const RecommendationOutputItemSchema = z.object({
   recommendation_type: RecommendationTypeSchema,
   title: z.string().min(1),
   reason: z.string().min(1),
-  priority: z.number().int().min(0).max(100),
-  related_file_ids: z.array(z.number().int().positive()),
+  priority: z.coerce.number().int().min(0).max(100).default(50),
+  related_file_ids: z.preprocess((val) => {
+    if (Array.isArray(val)) {
+      return val.map((x) => Number(x)).filter((x) => !isNaN(x) && x > 0);
+    }
+    if (typeof val === "number" && val > 0) return [val];
+    return [];
+  }, z.array(z.number().int().positive()).default([])),
   target_tab: RecommendationTargetTabSchema,
-  action: z.literal("review"),
+  action: z.preprocess((val) => {
+    if (typeof val === "string" && val.toLowerCase() === "review") return "review";
+    return "review";
+  }, z.literal("review")),
 });
 export type RecommendationOutputItem = z.infer<
   typeof RecommendationOutputItemSchema
 >;
 
 /** Structured LLM output contract */
-export const RecommendationOutputSchema = z.object({
-  recommendations: z.array(RecommendationOutputItemSchema).max(5),
-});
+export const RecommendationOutputSchema = z.preprocess(
+  (val) => {
+    if (Array.isArray(val)) {
+      return { recommendations: val };
+    }
+    if (val && typeof val === "object" && !("recommendations" in val)) {
+      for (const key of ["items", "data", "result", "suggestions", "cards", "results"]) {
+        if (Array.isArray((val as any)[key])) {
+          return { recommendations: (val as any)[key] };
+        }
+      }
+    }
+    return val;
+  },
+  z.object({
+    recommendations: z.array(RecommendationOutputItemSchema).max(5),
+  })
+);
 export type RecommendationOutput = z.infer<
   typeof RecommendationOutputSchema
 >;

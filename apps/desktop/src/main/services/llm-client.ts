@@ -8,6 +8,7 @@
  */
 import { Ollama } from "ollama";
 import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db/client";
@@ -74,6 +75,14 @@ export function ensureDefaultAiConfig(): void {
           addedAt: new Date().toISOString(),
         })
         .run();
+    } else {
+      const hasActive = existing.some((c) => c.isActive === 1);
+      if (!hasActive) {
+        db.update(aiProviderConfig)
+          .set({ isActive: 1 })
+          .where(eq(aiProviderConfig.providerName, "ollama"))
+          .run();
+      }
     }
   } catch (err) {
     console.error("Failed to initialize default AI provider config:", err);
@@ -203,9 +212,63 @@ export async function testProviderConnection(params: {
       return { success: true, latencyMs: Date.now() - startTime };
     }
 
+    if (params.provider === "groq") {
+      const key = params.apiKey || getProviderKey("groq");
+      if (!key) {
+        return { success: false, error: "No API key provided for Groq" };
+      }
+
+      const client = new OpenAI({
+        apiKey: key,
+        baseURL: "https://api.groq.com/openai/v1",
+      });
+      await client.chat.completions.create({
+        model: params.model || DEFAULT_MODELS.groq,
+        messages: [{ role: "user", content: "ping" }],
+        max_tokens: 1,
+      });
+
+      return { success: true, latencyMs: Date.now() - startTime };
+    }
+
+    if (params.provider === "openrouter") {
+      const key = params.apiKey || getProviderKey("openrouter");
+      if (!key) {
+        return { success: false, error: "No API key provided for OpenRouter" };
+      }
+
+      const client = new OpenAI({
+        apiKey: key,
+        baseURL: "https://openrouter.ai/api/v1",
+      });
+      await client.chat.completions.create({
+        model: params.model || DEFAULT_MODELS.openrouter,
+        messages: [{ role: "user", content: "ping" }],
+        max_tokens: 1,
+      });
+
+      return { success: true, latencyMs: Date.now() - startTime };
+    }
+
+    if (params.provider === "anthropic") {
+      const key = params.apiKey || getProviderKey("anthropic");
+      if (!key) {
+        return { success: false, error: "No API key provided for Anthropic" };
+      }
+
+      const client = new Anthropic({ apiKey: key });
+      await client.messages.create({
+        model: params.model || DEFAULT_MODELS.anthropic,
+        max_tokens: 1,
+        messages: [{ role: "user", content: "ping" }],
+      });
+
+      return { success: true, latencyMs: Date.now() - startTime };
+    }
+
     return {
       success: false,
-      error: `Provider ${params.provider} testing not yet configured`,
+      error: `Provider ${params.provider} is not supported`,
     };
   } catch (err: any) {
     return {
@@ -372,7 +435,91 @@ export async function generateCompletion(params: {
     return response.choices[0]?.message?.content || "";
   }
 
+  if (active.providerName === "groq") {
+    const key = getProviderKey("groq");
+    if (!key) {
+      throw new Error("Groq API key missing in secure storage");
+    }
+    const client = new OpenAI({
+      apiKey: key,
+      baseURL: "https://api.groq.com/openai/v1",
+    });
+    const response = await client.chat.completions.create({
+      model: active.modelName,
+      messages: [
+        ...(params.systemPrompt
+          ? [{ role: "system" as const, content: params.systemPrompt }]
+          : []),
+        { role: "user" as const, content: params.prompt },
+      ],
+    });
+    return response.choices[0]?.message?.content || "";
+  }
+
+  if (active.providerName === "openrouter") {
+    const key = getProviderKey("openrouter");
+    if (!key) {
+      throw new Error("OpenRouter API key missing in secure storage");
+    }
+    const client = new OpenAI({
+      apiKey: key,
+      baseURL: "https://openrouter.ai/api/v1",
+    });
+    const response = await client.chat.completions.create({
+      model: active.modelName,
+      messages: [
+        ...(params.systemPrompt
+          ? [{ role: "system" as const, content: params.systemPrompt }]
+          : []),
+        { role: "user" as const, content: params.prompt },
+      ],
+    });
+    return response.choices[0]?.message?.content || "";
+  }
+
+  if (active.providerName === "anthropic") {
+    const key = getProviderKey("anthropic");
+    if (!key) {
+      throw new Error("Anthropic API key missing in secure storage");
+    }
+    const client = new Anthropic({ apiKey: key });
+    const response = await client.messages.create({
+      model: active.modelName,
+      max_tokens: 2048,
+      system: params.systemPrompt,
+      messages: [{ role: "user", content: params.prompt }],
+    });
+    const textBlock = response.content.find((b) => b.type === "text");
+    return textBlock?.text || "";
+  }
+
   throw new Error(`Active provider ${active.providerName} is not yet supported`);
+}
+
+/**
+ * Extracts a clean JSON string from LLM output (handles code fences, preamble, etc.)
+ */
+export function extractJsonFromText(rawText: string): string {
+  if (!rawText) return "";
+  const codeBlockMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (codeBlockMatch && codeBlockMatch[1]) {
+    return codeBlockMatch[1].trim();
+  }
+  const firstBracket = rawText.indexOf("[");
+  const firstBrace = rawText.indexOf("{");
+  if (firstBracket !== -1 && (firstBrace === -1 || firstBracket < firstBrace)) {
+    const lastBracket = rawText.lastIndexOf("]");
+    if (lastBracket > firstBracket) {
+      return rawText.substring(firstBracket, lastBracket + 1).trim();
+    }
+  }
+  if (firstBrace !== -1) {
+    const lastBrace = rawText.lastIndexOf("}");
+    if (lastBrace > firstBrace) {
+      return rawText.substring(firstBrace, lastBrace + 1).trim();
+    }
+  }
+  return rawText.replace(/```json\s*|```/g, "").trim();
 }
 
 /**
@@ -390,19 +537,17 @@ export async function generateStructured<T>(params: {
   });
 
   try {
-    const cleaned = rawResponse.replace(/```json\s*|```/g, "").trim();
+    const cleaned = extractJsonFromText(rawResponse);
     const parsedJson = JSON.parse(cleaned);
     return params.schema.parse(parsedJson);
   } catch (initialErr) {
-    // Attempt one repair re-prompt
-    const repairPrompt = `The previous response failed schema validation:\nResponse was: ${rawResponse}\nError: ${initialErr}\n\nPlease output only corrected valid JSON matching the schema.`;
+    // Attempt one repair re-prompt with explicit schema reminder
+    const repairPrompt = `The previous response failed schema validation:\nResponse was: ${rawResponse}\nError: ${initialErr}\n\nPlease output ONLY valid JSON matching the schema (for recommendations, wrap in {"recommendations": [...]}).`;
     const repairedResponse = await generateCompletion({
       prompt: repairPrompt,
       systemPrompt: params.systemPrompt,
     });
-    const cleanedRepaired = repairedResponse
-      .replace(/```json\s*|```/g, "")
-      .trim();
+    const cleanedRepaired = extractJsonFromText(repairedResponse);
     const repairedJson = JSON.parse(cleanedRepaired);
     return params.schema.parse(repairedJson);
   }

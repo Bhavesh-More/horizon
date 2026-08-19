@@ -84,7 +84,21 @@ function classifyProviderError(error: unknown): RecommendationProviderError {
 }
 
 function errorMessage(error: unknown): string {
-  if (error instanceof Error && error.message) return error.message;
+  if (error instanceof Error && error.message) {
+    const trimmed = error.message.trim();
+    if (trimmed.startsWith("[") && trimmed.includes('"code"')) {
+      try {
+        const issues = JSON.parse(trimmed);
+        if (Array.isArray(issues) && issues.length > 0) {
+          const first = issues[0];
+          return `Schema validation failed: ${first.message || "Invalid output"} at ${first.path?.join(".") || "root"}`;
+        }
+      } catch {
+        return "Model output did not match the expected recommendation schema.";
+      }
+    }
+    return error.message;
+  }
   return "Recommendation generation failed";
 }
 

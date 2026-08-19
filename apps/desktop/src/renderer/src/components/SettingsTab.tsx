@@ -22,11 +22,12 @@ import {
   AiProviderStatusResponse,
   OllamaMode,
 } from "@horizon/shared-types";
+import { applyTheme, getSavedTheme, ThemeMode } from "../lib/theme";
 
 const THEMES = [
-  { id: "light", label: "Light", icon: Sun },
-  { id: "dark", label: "Dark", icon: Moon },
-  { id: "system", label: "System", icon: Monitor },
+  { id: "light" as const, label: "Light", icon: Sun },
+  { id: "dark" as const, label: "Dark", icon: Moon },
+  { id: "system" as const, label: "System", icon: Monitor },
 ] as const;
 
 export const SettingsTab: React.FC = React.memo(function SettingsTab() {
@@ -36,7 +37,7 @@ export const SettingsTab: React.FC = React.memo(function SettingsTab() {
   const [modelInput, setModelInput] = useState<string>("llama3.2:3b");
   const [apiKeyInput, setApiKeyInput] = useState<string>("");
   const [showKey, setShowKey] = useState<boolean>(false);
-  const [activeTheme, setActiveTheme] = useState<"light" | "dark" | "system">("dark");
+  const [activeTheme, setActiveTheme] = useState<ThemeMode>(() => getSavedTheme());
 
   // Ollama-specific local / remote mode state
   const [ollamaMode, setOllamaMode] = useState<OllamaMode>("local");
@@ -498,11 +499,7 @@ export const SettingsTab: React.FC = React.memo(function SettingsTab() {
                 type="button"
                 onClick={() => {
                   setActiveTheme(id);
-                  if (id === "dark") {
-                    document.documentElement.classList.add("dark");
-                  } else if (id === "light") {
-                    document.documentElement.classList.remove("dark");
-                  }
+                  applyTheme(id);
                 }}
                 className={`flex items-center gap-2 rounded-sm border px-4 py-2 text-row transition-colors cursor-pointer ${
                   activeTheme === id

@@ -346,3 +346,22 @@ Keep the `Classes` block to the actual, real `className` strings from the compon
 - **Tokens used:** `background`, `surface`, `surface-secondary`, `border`, `text-primary`, `text-secondary`, `text-tertiary`, `tag-safe-bg`, `tag-safe-text`, `tag-check-bg`, `tag-check-text`, `tag-danger-bg`, `tag-danger-text`, `btn-primary-bg`, `btn-primary-text`, `text-title`, `text-row`, `text-meta`, `text-meta-emphasis`, `radius-md`, `radius-sm`, `radius-xs`
 - **Notes:** Unified reverse-chronological audit log view across scans, trash actions, archives, and restores. Features metric summary cards, type filtering, expandable impacted file paths, and safe "Open Trash" Undo affordance.
 
+### HierarchyTab
+
+- **Path:** `apps/desktop/src/renderer/src/components/HierarchyTab.tsx`
+- **Used by:** App main view (`activeTab === "Hierarchy"`)
+- **Props:** None
+- **Classes:**
+  ```tsx
+  <div className="flex h-full flex-col overflow-hidden bg-background">
+    <header className="flex h-[72px] shrink-0 items-center justify-between border-b border-border bg-background px-6">
+    <div className="mb-4 flex items-center justify-between rounded-md border border-border bg-surface px-4 py-3">
+    <div className="overflow-x-auto rounded-md border border-border bg-surface">
+    <tr className="border-b border-border bg-surface-secondary/80 text-meta font-medium text-text-secondary">
+    <tr className="group border-b border-border text-row hover:bg-surface-secondary/60 transition-colors">
+    <div className="relative h-4 flex-1 overflow-hidden rounded-xs bg-surface-secondary">
+    <div className="h-full bg-btn-primary-bg opacity-85 transition-all duration-300">
+  ```
+- **Tokens used:** `background`, `surface`, `surface-secondary`, `border`, `btn-secondary-border`, `text-primary`, `text-secondary`, `text-tertiary`, `tag-check-bg`, `tag-check-text`, `tag-danger-bg`, `tag-danger-text`, `btn-primary-bg`, `btn-primary-text`, `text-title`, `text-row`, `text-meta`, `radius-md`, `radius-sm`, `radius-xs`
+- **Notes:** Interactive collapsible disk hierarchy tree table displaying file and folder sizes, allocated disk space, recursive file/subfolder counts, % of parent progress bars, last modified dates, drive/volume switcher, native folder picker, and hidden file toggling.
+

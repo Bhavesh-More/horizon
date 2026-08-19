@@ -11,3 +11,4 @@ export * from "./assistant";
 export * from "./archive";
 export * from "./settings";
 export * from "./activity";
+export * from "./hierarchy";

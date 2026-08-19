@@ -18,6 +18,7 @@ import { registerAssistantIpc } from "./ipc/assistant";
 import { registerArchiveIpc } from "./ipc/archive";
 import { registerActivityIpc } from "./ipc/activity";
 import { registerSettingsIpc } from "./ipc/settings";
+import { registerHierarchyIpc } from "./ipc/hierarchy";
 import { initSnapshotScheduler, bootstrapHistory } from "./services/scheduler";
 
 
@@ -65,6 +66,7 @@ app.whenReady().then(() => {
   registerArchiveIpc();
   registerActivityIpc();
   registerSettingsIpc();
+  registerHierarchyIpc();
   createWindow();
 });
 

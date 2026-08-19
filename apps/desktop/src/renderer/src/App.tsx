@@ -7,6 +7,7 @@ import {
   Layers3,
   LifeBuoy,
   Files,
+  FolderTree,
   ScanSearch,
   Settings2,
   Sparkles,
@@ -15,6 +16,7 @@ import { OverviewTab } from "./components/OverviewTab";
 import { DuplicatesTab } from "./components/DuplicatesTab";
 import { UnusedFilesTab } from "./components/UnusedFilesTab";
 import { LargeFilesTab } from "./components/LargeFilesTab";
+import { HierarchyTab } from "./components/HierarchyTab";
 import { SettingsTab } from "./components/SettingsTab";
 import { ForecastTab } from "./components/ForecastTab";
 import { AssistantTab } from "./components/AssistantTab";
@@ -22,12 +24,14 @@ import { ArchiveTab } from "./components/ArchiveTab";
 import { ActivityTab } from "./components/ActivityTab";
 import { FirstRunGate } from "./components/FirstRunGate";
 import { RecommendationRecord } from "@horizon/shared-types";
+import { initTheme } from "./lib/theme";
 
 const TABS = [
   { label: "Overview", icon: LayoutGrid },
   { label: "Duplicates", icon: ScanSearch },
   { label: "Unused Files", icon: Layers3 },
   { label: "Large Files", icon: HardDriveDownload },
+  { label: "Hierarchy", icon: FolderTree },
   { label: "Forecast", icon: Files },
   { label: "Assistant", icon: Sparkles },
   { label: "Archive", icon: Archive },
@@ -59,12 +63,12 @@ export default function App() {
     handleSelectTab(tabByTarget[recommendation.targetTab]);
   };
 
-  // Global ⌘1-⌘9 / Ctrl+1-9 keyboard shortcut listener
+  // Global ⌘1-⌘9 / ⌘0 keyboard shortcut listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isOnboardingComplete === false) return;
-      if ((e.metaKey || e.ctrlKey) && e.key >= "1" && e.key <= "9") {
-        const index = parseInt(e.key, 10) - 1;
+      if ((e.metaKey || e.ctrlKey) && ((e.key >= "1" && e.key <= "9") || e.key === "0")) {
+        const index = e.key === "0" ? 9 : parseInt(e.key, 10) - 1;
         if (index >= 0 && index < TABS.length) {
           e.preventDefault();
           startTransition(() => {
@@ -97,6 +101,11 @@ export default function App() {
     return () => {
       isMounted = false;
     };
+  }, []);
+
+  useEffect(() => {
+    const cleanupTheme = initTheme();
+    return cleanupTheme;
   }, []);
 
   return (
@@ -164,6 +173,9 @@ export default function App() {
         <div className={activeTab === "Large Files" ? "h-full flex flex-col" : "hidden"}>
           <LargeFilesTab />
         </div>
+        <div className={activeTab === "Hierarchy" ? "h-full flex flex-col" : "hidden"}>
+          <HierarchyTab />
+        </div>
         <div className={activeTab === "Forecast" ? "h-full flex flex-col" : "hidden"}>
           <ForecastTab onNavigateToTab={handleSelectTab} />
         </div>
@@ -186,6 +198,7 @@ export default function App() {
           activeTab !== "Duplicates" &&
           activeTab !== "Unused Files" &&
           activeTab !== "Large Files" &&
+          activeTab !== "Hierarchy" &&
           activeTab !== "Forecast" &&
           activeTab !== "Assistant" &&
           activeTab !== "Archive" &&

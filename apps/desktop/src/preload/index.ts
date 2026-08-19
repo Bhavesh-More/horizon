@@ -24,6 +24,7 @@ import {
   SettingsGetScanScopeRequestSchema,
   SettingsRequestScanScopeRequestSchema,
   SettingsSaveScanScopeRequestSchema,
+  HierarchyScanDirectoryRequestSchema,
 } from "@horizon/shared-types";
 
 contextBridge.exposeInMainWorld("horizon", {
@@ -247,4 +248,17 @@ contextBridge.exposeInMainWorld("horizon", {
       return await ipcRenderer.invoke("settings:completeOnboarding", payload);
     },
   },
+  hierarchy: {
+    listDrives: async () => {
+      return await ipcRenderer.invoke("hierarchy:listDrives");
+    },
+    scanDirectory: async (payload: { path: string; showHidden?: boolean; depth?: number }) => {
+      const validated = HierarchyScanDirectoryRequestSchema.parse(payload);
+      return await ipcRenderer.invoke("hierarchy:scanDirectory", validated);
+    },
+    pickDirectory: async () => {
+      return await ipcRenderer.invoke("hierarchy:pickDirectory");
+    },
+  },
 });
+

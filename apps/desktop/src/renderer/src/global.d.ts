@@ -30,6 +30,9 @@ import {
   SettingsGetScanScopeResponse,
   SettingsRequestScanScopeResponse,
   SettingsSaveScanScopeResponse,
+  HierarchyListDrivesResponse,
+  HierarchyScanDirectoryResponse,
+  HierarchyPickDirectoryResponse,
 } from "@horizon/shared-types";
 
 export {};
@@ -105,6 +108,11 @@ declare global {
         getScanScope: () => Promise<{ ok: boolean; data?: SettingsGetScanScopeResponse; error?: any }>;
         saveScanScope: (scope: string[]) => Promise<{ ok: boolean; data?: SettingsSaveScanScopeResponse; error?: any }>;
         completeOnboarding: (scanScope: string[], aiProviderSkipped?: boolean) => Promise<{ ok: boolean; data?: SettingsCompleteOnboardingResponse; error?: any }>;
+      };
+      hierarchy: {
+        listDrives: () => Promise<{ ok: boolean; data?: HierarchyListDrivesResponse; error?: any }>;
+        scanDirectory: (payload: { path: string; showHidden?: boolean; depth?: number }) => Promise<{ ok: boolean; data?: HierarchyScanDirectoryResponse; error?: any }>;
+        pickDirectory: () => Promise<{ ok: boolean; data?: HierarchyPickDirectoryResponse; error?: any }>;
       };
     };
   }

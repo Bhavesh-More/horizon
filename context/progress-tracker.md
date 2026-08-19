@@ -198,7 +198,7 @@ Living document. Updated as work is completed — mark a checkbox only when a ph
 - [x] IPC: `settings:requestScanScope`, `settings:save`
 
 **Exit criteria:** a completely fresh install, with no prior state, walks a new user end-to-end to a populated Overview tab without needing developer intervention.
-**Status notes:** Phase 13 implementation landed with shared settings schemas, a `settings` table and migration, main process settings persistence, native scan-scope folder picker IPC, typed preload bridge, full-screen `FirstRunGate` wizard, real first-scan progress handling, onboarding completion persistence, and Overview scans using the saved scope. Verified with desktop typecheck, desktop Vitest suite, targeted shared schema tests, migration smoke check, and raw Tailwind palette scan.
+**Status notes:** Phase 13 implementation landed with shared settings schemas, a `settings` table and migration, main process settings persistence, native scan-scope folder picker IPC, typed preload bridge, full-screen `FirstRunGate` wizard, yellow-themed permission prompt for scanning hidden files & system folders, real first-scan progress handling, onboarding completion persistence, Overview scans using the saved scope, and the new interactive **Hierarchy (Disk Tree Explorer)** tab with multi-drive discovery and on-demand folder expansion. Verified with desktop typecheck and Vitest suite (27/27 test suites, 111/111 passing).
 
 ---
 

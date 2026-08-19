@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  AlertTriangle,
   CheckCircle2,
   ChevronRight,
   FolderOpen,
@@ -53,6 +54,13 @@ export const FirstRunGate = React.memo(function FirstRunGate({
   const [scanScope, setScanScope] = useState<string[]>([]);
   const [providerStatus, setProviderStatus] = useState<AiProviderStatusResponse | null>(null);
   const [aiProviderSkipped, setAiProviderSkipped] = useState(false);
+  const [allowHiddenFiles, setAllowHiddenFiles] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("horizon_allow_hidden_files") === "true";
+    } catch {
+      return false;
+    }
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [isPickingFolders, setIsPickingFolders] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
@@ -251,6 +259,41 @@ export const FirstRunGate = React.memo(function FirstRunGate({
             </div>
           </div>
 
+          {/* Yellow Permission Prompt for Hidden Files */}
+          <div className="rounded-md border border-tag-check-text/40 bg-tag-check-bg p-4 text-tag-check-text">
+            <div className="flex items-start gap-3">
+              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-sm bg-tag-check-text/10 text-tag-check-text mt-0.5">
+                <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-3">
+                  <label htmlFor="hidden-files-permission" className="text-row font-semibold text-tag-check-text cursor-pointer">
+                    Scan Hidden Files & System Folders
+                  </label>
+                  <input
+                    id="hidden-files-permission"
+                    type="checkbox"
+                    checked={allowHiddenFiles}
+                    onChange={(e) => {
+                      const val = e.target.checked;
+                      setAllowHiddenFiles(val);
+                      try {
+                        localStorage.setItem("horizon_allow_hidden_files", String(val));
+                      } catch {}
+                    }}
+                    className="h-4 w-4 rounded-xs border-tag-check-text accent-btn-primary-bg cursor-pointer"
+                  />
+                </div>
+                <p className="mt-1 text-meta leading-relaxed opacity-90">
+                  Allow Horizon to inspect dotfiles (e.g. <code>.config</code>, <code>.cache</code>) and hidden folders.
+                </p>
+                <p className="mt-2 text-meta font-medium">
+                  ⚠️ <strong>Hint:</strong> If not allowed, hidden files cannot be shown in the Hierarchy tree view or cleanup tools.
+                </p>
+              </div>
+            </div>
+          </div>
+
           <div className="rounded-md border border-border bg-surface p-4">
             <p className="text-row font-semibold text-text-primary">
               Default folders are ready
@@ -275,7 +318,12 @@ export const FirstRunGate = React.memo(function FirstRunGate({
               </Button>
               <button
                 type="button"
-                onClick={() => setStep("ai")}
+                onClick={() => {
+                  try {
+                    localStorage.setItem("horizon_allow_hidden_files", String(allowHiddenFiles));
+                  } catch {}
+                  setStep("ai");
+                }}
                 className="rounded-sm border border-btn-secondary-border bg-surface px-3 py-2 text-row text-text-primary transition-colors hover:bg-surface-secondary"
               >
                 Continue

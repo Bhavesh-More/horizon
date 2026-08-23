@@ -57,8 +57,12 @@ import {
   listOllamaModels,
   testProviderConnection,
   setActiveProvider,
+  extractJsonFromText,
+  repairJson,
+  parseAndValidateJson,
 } from "./llm-client";
 import { setMockSecretStore } from "../core/secure-storage";
+import { z } from "zod";
 
 describe("llm-client service", () => {
   beforeEach(() => {
@@ -124,5 +128,66 @@ describe("llm-client service", () => {
     });
     expect(probe.success).toBe(false);
     expect(probe.error).toContain("No API key");
+  });
+
+  describe("JSON extraction and repair", () => {
+    const testSchema = z.object({
+      recommendations: z.array(
+        z.object({
+          title: z.string(),
+          priority: z.number(),
+        })
+      ),
+    });
+
+    it("extracts json from markdown code fences", () => {
+      const input = "Here is the response:\n```json\n{\"recommendations\": [{\"title\": \"clean\", \"priority\": 80}]}\n```";
+      const cleaned = extractJsonFromText(input);
+      expect(cleaned).toBe("{\"recommendations\": [{\"title\": \"clean\", \"priority\": 80}]}");
+    });
+
+    it("repairs unescaped quotes inside property values", () => {
+      const input = '{"recommendations": [{"title": "Review "Downloads/file.pdf" duplicates", "priority": 90}]}';
+      const parsed = parseAndValidateJson(input, testSchema);
+      expect(parsed.recommendations).toHaveLength(1);
+      expect(parsed.recommendations[0].title).toContain('Downloads/file.pdf');
+      expect(parsed.recommendations[0].priority).toBe(90);
+    });
+
+    it("repairs trailing commas in arrays and objects", () => {
+      const input = '{"recommendations": [{"title": "Test", "priority": 50, }, ], }';
+      const parsed = parseAndValidateJson(input, testSchema);
+      expect(parsed.recommendations[0].priority).toBe(50);
+    });
+
+    it("repairs comments and unescaped newlines", () => {
+      const input = `// Model output
+      {
+        /* block comment */
+        "recommendations": [
+          {
+            "title": "Review line1
+line2",
+            "priority": 70
+          }
+        ]
+      }`;
+      const parsed = parseAndValidateJson(input, testSchema);
+      expect(parsed.recommendations[0].title).toContain("line1");
+    });
+
+    it("auto-wraps bare array when object with recommendations is expected", () => {
+      const input = '[{"title": "Direct Array", "priority": 60}]';
+      const parsed = parseAndValidateJson(input, testSchema);
+      expect(parsed.recommendations).toHaveLength(1);
+      expect(parsed.recommendations[0].title).toBe("Direct Array");
+    });
+
+    it("repairs truncated JSON responses", () => {
+      const input = '{"recommendations": [{"title": "Truncated title", "priority": 40';
+      const parsed = parseAndValidateJson(input, testSchema);
+      expect(parsed.recommendations[0].title).toBe("Truncated title");
+      expect(parsed.recommendations[0].priority).toBe(40);
+    });
   });
 });

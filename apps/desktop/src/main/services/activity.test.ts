@@ -122,6 +122,6 @@ describe("activity service", () => {
   it("calls shell.openTrash or shell.openPath when openOsTrash is invoked", async () => {
     const success = await openOsTrash();
     expect(success).toBe(true);
-    expect(shell.openTrash).toHaveBeenCalled();
+    expect((shell as any).openTrash).toHaveBeenCalled();
   });
 });

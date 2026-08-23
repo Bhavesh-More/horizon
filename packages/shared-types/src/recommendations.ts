@@ -193,43 +193,119 @@ export type RecommendationContext = z.infer<
   typeof RecommendationContextSchema
 >;
 
+function normalizeRecommendationType(val: unknown): RecommendationType {
+  if (typeof val !== "string") return "cleanup";
+  const lower = val.toLowerCase().trim();
+  if (lower.includes("dup")) return "duplicate";
+  if (lower.includes("large")) return "large_file";
+  if (lower.includes("unused") || lower.includes("stale") || lower.includes("old")) return "unused";
+  if (lower.includes("archive")) return "archive";
+  if (lower.includes("forecast")) return "forecast";
+  return "cleanup";
+}
+
+function normalizeTargetTab(val: unknown, type?: string): RecommendationTargetTab {
+  if (typeof val === "string") {
+    const lower = val.toLowerCase().trim();
+    if (lower.includes("dup")) return "duplicates";
+    if (lower.includes("large")) return "large_files";
+    if (lower.includes("unused") || lower.includes("stale") || lower.includes("archive")) return "unused";
+    if (lower.includes("forecast")) return "forecast";
+    if (lower.includes("overview") || lower.includes("summary") || lower.includes("home")) return "overview";
+  }
+  if (type === "duplicate") return "duplicates";
+  if (type === "large_file") return "large_files";
+  if (type === "unused" || type === "archive") return "unused";
+  if (type === "forecast") return "forecast";
+  return "overview";
+}
+
+function normalizePriority(val: unknown): number {
+  if (typeof val === "number" && !isNaN(val)) {
+    return Math.max(0, Math.min(100, Math.round(val)));
+  }
+  if (typeof val === "string") {
+    const parsed = parseInt(val, 10);
+    if (!isNaN(parsed)) return Math.max(0, Math.min(100, parsed));
+    const lower = val.toLowerCase();
+    if (lower.includes("high") || lower.includes("urgent") || lower.includes("critical")) return 85;
+    if (lower.includes("med")) return 50;
+    if (lower.includes("low")) return 25;
+  }
+  return 50;
+}
+
 /** Single LLM recommendation output before app side validation */
-export const RecommendationOutputItemSchema = z.object({
-  recommendation_type: RecommendationTypeSchema,
-  title: z.string().min(1),
-  reason: z.string().min(1),
-  priority: z.coerce.number().int().min(0).max(100).default(50),
-  related_file_ids: z.preprocess((val) => {
-    if (Array.isArray(val)) {
-      return val.map((x) => Number(x)).filter((x) => !isNaN(x) && x > 0);
+export const RecommendationOutputItemSchema = z.preprocess(
+  (raw: any) => {
+    if (!raw || typeof raw !== "object") return raw;
+    const type = normalizeRecommendationType(
+      raw.recommendation_type || raw.recommendationType || raw.type || raw.category
+    );
+    const targetTab = normalizeTargetTab(
+      raw.target_tab || raw.targetTab || raw.tab,
+      type
+    );
+    const priority = normalizePriority(raw.priority);
+    const title = String(raw.title || raw.name || raw.summary || "Storage cleanup recommendation").trim();
+    const reason = String(raw.reason || raw.description || raw.explanation || raw.details || "Review candidate files in Horizon.").trim();
+
+    let relatedFileIds: number[] = [];
+    const rawIds = raw.related_file_ids || raw.relatedFileIds || raw.file_ids || raw.fileIds || raw.files;
+    if (Array.isArray(rawIds)) {
+      relatedFileIds = rawIds
+        .map((x) => (typeof x === "object" && x !== null ? Number(x.id || x.fileId) : Number(x)))
+        .filter((x) => !isNaN(x) && x > 0);
+    } else if (typeof rawIds === "number" && rawIds > 0) {
+      relatedFileIds = [rawIds];
     }
-    if (typeof val === "number" && val > 0) return [val];
-    return [];
-  }, z.array(z.number().int().positive()).default([])),
-  target_tab: RecommendationTargetTabSchema,
-  action: z.preprocess((val) => {
-    if (typeof val === "string" && val.toLowerCase() === "review") return "review";
-    return "review";
-  }, z.literal("review")),
-});
+
+    return {
+      recommendation_type: type,
+      title: title || "Storage cleanup recommendation",
+      reason: reason || "Review candidate files in Horizon.",
+      priority,
+      related_file_ids: relatedFileIds,
+      target_tab: targetTab,
+      action: "review",
+    };
+  },
+  z.object({
+    recommendation_type: RecommendationTypeSchema,
+    title: z.string().min(1),
+    reason: z.string().min(1),
+    priority: z.number().int().min(0).max(100).default(50),
+    related_file_ids: z.array(z.number().int().positive()).default([]),
+    target_tab: RecommendationTargetTabSchema,
+    action: z.literal("review"),
+  })
+);
 export type RecommendationOutputItem = z.infer<
   typeof RecommendationOutputItemSchema
 >;
 
 /** Structured LLM output contract */
 export const RecommendationOutputSchema = z.preprocess(
-  (val) => {
+  (val: any) => {
+    let list: any[] = [];
     if (Array.isArray(val)) {
-      return { recommendations: val };
-    }
-    if (val && typeof val === "object" && !("recommendations" in val)) {
-      for (const key of ["items", "data", "result", "suggestions", "cards", "results"]) {
-        if (Array.isArray((val as any)[key])) {
-          return { recommendations: (val as any)[key] };
+      list = val;
+    } else if (val && typeof val === "object") {
+      if (Array.isArray(val.recommendations)) {
+        list = val.recommendations;
+      } else {
+        for (const key of ["items", "data", "result", "suggestions", "cards", "results", "recommendation"]) {
+          if (Array.isArray(val[key])) {
+            list = val[key];
+            break;
+          } else if (val[key] && typeof val[key] === "object") {
+            list = [val[key]];
+            break;
+          }
         }
       }
     }
-    return val;
+    return { recommendations: list };
   },
   z.object({
     recommendations: z.array(RecommendationOutputItemSchema).max(5),

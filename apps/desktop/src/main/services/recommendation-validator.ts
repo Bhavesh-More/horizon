@@ -94,8 +94,11 @@ export function validateRecommendationOutput(
     if (accepted.length >= 5) break;
     if (item.action !== "review") continue;
     if (!targetMatchesType(item.recommendation_type, item.target_tab)) continue;
+
+    // Filter to valid file IDs present in the supplied metadata
+    item.related_file_ids = item.related_file_ids.filter((id) => validFileIds.has(id));
+
     if (!hasEvidenceForType(item, context)) continue;
-    if (!hasValidFileIds(item, validFileIds)) continue;
     if (!isSafeText(item)) continue;
 
     const key = dedupeKey(item);

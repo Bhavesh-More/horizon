@@ -250,14 +250,6 @@ export const AssistantTab = React.memo(function AssistantTab({
     setChatError(res.error?.message || "Failed to start assistant chat.");
   };
 
-  const emptyTitle = useMemo(() => {
-    if (generationState === "waiting_for_scan") return "No completed scan yet";
-    if (generationState === "provider_unavailable") return "AI provider needed";
-    if (generationState === "no_results") return "Nothing strong enough to suggest";
-    if (generationState === "error") return "Generation needs attention";
-    return "No active recommendations";
-  }, [generationState]);
-
   return (
     <div className="flex h-full flex-col overflow-hidden bg-background">
       <header className="flex h-[72px] shrink-0 items-center justify-between border-b border-border bg-background px-6">
@@ -291,52 +283,44 @@ export const AssistantTab = React.memo(function AssistantTab({
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto p-6">
-        <div className="mb-4 rounded-md border border-border bg-surface p-4">
-          <div className="flex items-start gap-3">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm bg-surface-secondary text-text-secondary">
-              {stateIcon(generationState)}
-            </div>
-            <div className="min-w-0">
-              <p className="text-row font-semibold text-text-primary">
-                Review only recommendations
-              </p>
-              <p className="mt-1 text-meta text-text-secondary">
-                Cards are generated from metadata such as paths, sizes, dates,
-                categories, duplicate groups, and forecast signals.
-              </p>
-              {data?.lastError ? (
-                <p className="mt-2 text-meta-emphasis text-tag-danger-text">
-                  {data.lastError.message}
+      <main className="flex flex-1 flex-col overflow-y-auto p-6">
+        {recommendations.length > 0 ? (
+          <div className="mb-4 rounded-md border border-border bg-surface p-4">
+            <div className="flex items-start gap-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm bg-surface-secondary text-text-secondary">
+                {stateIcon(generationState)}
+              </div>
+              <div className="min-w-0">
+                <p className="text-row font-semibold text-text-primary">
+                  Review only recommendations
                 </p>
-              ) : null}
+                <p className="mt-1 text-meta text-text-secondary">
+                  Cards are generated from metadata such as paths, sizes, dates,
+                  categories, duplicate groups, and forecast signals.
+                </p>
+                {data?.lastError ? (
+                  <p className="mt-2 text-meta-emphasis text-tag-danger-text">
+                    {data.lastError.message}
+                  </p>
+                ) : null}
+              </div>
             </div>
           </div>
-        </div>
+        ) : null}
 
-        <section className="mb-4">
-          {isLoading && recommendations.length === 0 ? (
-            <div className="flex min-h-[180px] items-center justify-center rounded-md border border-border bg-surface p-8 text-center">
+        {isWorking && recommendations.length === 0 ? (
+          <section className="mb-4">
+            <div className="flex min-h-[140px] items-center justify-center rounded-md border border-border bg-surface p-8 text-center">
               <div>
                 <RefreshCw className="mx-auto h-5 w-5 animate-spin text-text-secondary" aria-hidden="true" />
                 <p className="mt-3 text-row font-semibold text-text-primary">
-                  Loading recommendations
+                  Loading recommendations…
                 </p>
               </div>
             </div>
-          ) : recommendations.length === 0 ? (
-            <div className="flex min-h-[180px] items-center justify-center rounded-md border border-border bg-surface p-8 text-center">
-              <div>
-                <Sparkles className="mx-auto h-6 w-6 text-text-secondary" aria-hidden="true" />
-                <p className="mt-3 text-row font-semibold text-text-primary">
-                  {emptyTitle}
-                </p>
-                <p className="mt-1 max-w-sm text-meta text-text-secondary">
-                  {stateSubtitle(generationState)}
-                </p>
-              </div>
-            </div>
-          ) : (
+          </section>
+        ) : recommendations.length > 0 ? (
+          <section className="mb-4">
             <div className="grid gap-4">
               {recommendations.map((recommendation) => (
                 <RecommendationCard
@@ -348,10 +332,10 @@ export const AssistantTab = React.memo(function AssistantTab({
                 />
               ))}
             </div>
-          )}
-        </section>
+          </section>
+        ) : null}
 
-        <section className="rounded-md border border-border bg-surface">
+        <section className="flex flex-1 flex-col rounded-md border border-border bg-surface">
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <div className="flex min-w-0 items-center gap-2">
               <MessageSquare className="h-4 w-4 shrink-0 text-text-secondary" aria-hidden="true" />

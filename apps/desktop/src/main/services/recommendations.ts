@@ -75,7 +75,11 @@ function classifyProviderError(error: unknown): RecommendationProviderError {
   if (
     message.includes("json") ||
     message.includes("schema") ||
-    message.includes("parse")
+    message.includes("parse") ||
+    message.includes("syntaxerror") ||
+    message.includes("position") ||
+    message.includes("expected") ||
+    message.includes("unexpected token")
   ) {
     return "invalid_response";
   }
@@ -84,8 +88,10 @@ function classifyProviderError(error: unknown): RecommendationProviderError {
 }
 
 function errorMessage(error: unknown): string {
-  if (error instanceof Error && error.message) {
-    const trimmed = error.message.trim();
+  const raw =
+    error instanceof Error ? error.message : typeof error === "string" ? error : "";
+  if (raw) {
+    const trimmed = raw.trim();
     if (trimmed.startsWith("[") && trimmed.includes('"code"')) {
       try {
         const issues = JSON.parse(trimmed);
@@ -97,7 +103,15 @@ function errorMessage(error: unknown): string {
         return "Model output did not match the expected recommendation schema.";
       }
     }
-    return error.message;
+    if (
+      trimmed.includes("JSON at position") ||
+      trimmed.includes("Unexpected token") ||
+      trimmed.includes("Expected ','") ||
+      trimmed.includes("Failed to parse model JSON")
+    ) {
+      return "Model output could not be parsed as valid JSON. Please try regenerating.";
+    }
+    return trimmed;
   }
   return "Recommendation generation failed";
 }
@@ -143,14 +157,17 @@ export async function getRecommendationsActive(
         : "error";
   }
 
+  const isLatestFailed = batch?.status === "failed";
+  const shouldShowError = isLatestFailed && !!failedBatch?.errorCategory;
+
   return {
     batch,
     recommendations,
     generationState,
-    lastError: failedBatch?.errorCategory
+    lastError: shouldShowError
       ? {
-          category: failedBatch.errorCategory,
-          message: failedBatch.errorMessage ?? "Recommendation generation failed",
+          category: failedBatch.errorCategory!,
+          message: errorMessage(failedBatch.errorMessage ?? "Recommendation generation failed"),
         }
       : null,
   };
@@ -269,6 +286,7 @@ async function runRecommendationGeneration(
 
     return { batchId, generationId, state: "ready" };
   } catch (error) {
+    console.error("[Recommendations] Generation failed:", error);
     const category = classifyProviderError(error);
     const message = errorMessage(error);
     if (batchId !== null) {

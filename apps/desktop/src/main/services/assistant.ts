@@ -44,7 +44,17 @@ function classifyAssistantError(err: unknown): AssistantChatError {
   if (message.includes("fetch") || message.includes("network") || message.includes("connect")) {
     return "network_error";
   }
-  if (message.includes("schema") || message.includes("json")) return "invalid_response";
+  if (
+    message.includes("schema") ||
+    message.includes("json") ||
+    message.includes("parse") ||
+    message.includes("syntaxerror") ||
+    message.includes("position") ||
+    message.includes("expected") ||
+    message.includes("unexpected token")
+  ) {
+    return "invalid_response";
+  }
   return "unknown";
 }
 

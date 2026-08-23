@@ -399,6 +399,7 @@ export async function setActiveProvider(
 export async function generateCompletion(params: {
   prompt: string;
   systemPrompt?: string;
+  jsonMode?: boolean;
 }): Promise<string> {
   const status = await getProvidersStatus();
   const active = status.providers.find((p) => p.isActive);
@@ -413,6 +414,7 @@ export async function generateCompletion(params: {
       model: active.modelName,
       prompt: params.prompt,
       system: params.systemPrompt,
+      format: params.jsonMode ? "json" : undefined,
     });
     return response.response;
   }
@@ -425,6 +427,7 @@ export async function generateCompletion(params: {
     const client = new OpenAI({ apiKey: key });
     const response = await client.chat.completions.create({
       model: active.modelName,
+      response_format: params.jsonMode ? { type: "json_object" } : undefined,
       messages: [
         ...(params.systemPrompt
           ? [{ role: "system" as const, content: params.systemPrompt }]
@@ -446,6 +449,7 @@ export async function generateCompletion(params: {
     });
     const response = await client.chat.completions.create({
       model: active.modelName,
+      response_format: params.jsonMode ? { type: "json_object" } : undefined,
       messages: [
         ...(params.systemPrompt
           ? [{ role: "system" as const, content: params.systemPrompt }]
@@ -467,6 +471,7 @@ export async function generateCompletion(params: {
     });
     const response = await client.chat.completions.create({
       model: active.modelName,
+      response_format: params.jsonMode ? { type: "json_object" } : undefined,
       messages: [
         ...(params.systemPrompt
           ? [{ role: "system" as const, content: params.systemPrompt }]
@@ -485,7 +490,7 @@ export async function generateCompletion(params: {
     const client = new Anthropic({ apiKey: key });
     const response = await client.messages.create({
       model: active.modelName,
-      max_tokens: 2048,
+      max_tokens: 4096,
       system: params.systemPrompt,
       messages: [{ role: "user", content: params.prompt }],
     });
@@ -501,54 +506,253 @@ export async function generateCompletion(params: {
  */
 export function extractJsonFromText(rawText: string): string {
   if (!rawText) return "";
-  const codeBlockMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+
+  const codeBlockMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)(?:```|$)/i);
   if (codeBlockMatch && codeBlockMatch[1]) {
-    return codeBlockMatch[1].trim();
+    const candidate = codeBlockMatch[1].trim();
+    if (candidate.startsWith("{") || candidate.startsWith("[")) {
+      return candidate;
+    }
   }
+
   const firstBracket = rawText.indexOf("[");
   const firstBrace = rawText.indexOf("{");
+
   if (firstBracket !== -1 && (firstBrace === -1 || firstBracket < firstBrace)) {
     const lastBracket = rawText.lastIndexOf("]");
     if (lastBracket > firstBracket) {
       return rawText.substring(firstBracket, lastBracket + 1).trim();
     }
+    return rawText.substring(firstBracket).trim();
   }
+
   if (firstBrace !== -1) {
     const lastBrace = rawText.lastIndexOf("}");
     if (lastBrace > firstBrace) {
       return rawText.substring(firstBrace, lastBrace + 1).trim();
     }
+    return rawText.substring(firstBrace).trim();
   }
+
   return rawText.replace(/```json\s*|```/g, "").trim();
+}
+
+function removeCommentsFromText(str: string): string {
+  let result = "";
+  let inString = false;
+  let escape = false;
+
+  for (let i = 0; i < str.length; i++) {
+    const char = str[i];
+    const next = str[i + 1];
+
+    if (inString) {
+      result += char;
+      if (escape) {
+        escape = false;
+      } else if (char === "\\") {
+        escape = true;
+      } else if (char === '"') {
+        inString = false;
+      }
+    } else {
+      if (char === '"') {
+        inString = true;
+        result += char;
+      } else if (char === "/" && next === "/") {
+        i += 2;
+        while (i < str.length && str[i] !== "\n" && str[i] !== "\r") {
+          i++;
+        }
+        if (i < str.length) result += str[i];
+      } else if (char === "/" && next === "*") {
+        i += 2;
+        while (i < str.length - 1 && !(str[i] === "*" && str[i + 1] === "/")) {
+          i++;
+        }
+        i++;
+      } else {
+        result += char;
+      }
+    }
+  }
+
+  return result;
+}
+
+function fixStringsAndStructure(str: string): string {
+  let result = "";
+  let inString = false;
+  let escape = false;
+  const stack: Array<"{" | "["> = [];
+
+  for (let i = 0; i < str.length; i++) {
+    const char = str[i];
+
+    if (!inString) {
+      if (char === "{" || char === "[") {
+        stack.push(char);
+        result += char;
+      } else if (char === "}") {
+        if (stack[stack.length - 1] === "{") stack.pop();
+        result += char;
+      } else if (char === "]") {
+        if (stack[stack.length - 1] === "[") stack.pop();
+        result += char;
+      } else if (char === '"') {
+        inString = true;
+        result += char;
+      } else {
+        result += char;
+      }
+    } else {
+      if (escape) {
+        result += char;
+        escape = false;
+      } else if (char === "\\") {
+        escape = true;
+        result += char;
+      } else if (char === "\n") {
+        result += "\\n";
+      } else if (char === "\r") {
+        // skip carriage return inside string
+      } else if (char === "\t") {
+        result += "\\t";
+      } else if (char === '"') {
+        let lookAheadIdx = i + 1;
+        while (lookAheadIdx < str.length && /\s/.test(str[lookAheadIdx])) {
+          lookAheadIdx++;
+        }
+        const nextNonWs = str[lookAheadIdx];
+        const isFollowedByDelimiter =
+          nextNonWs === "," ||
+          nextNonWs === "}" ||
+          nextNonWs === "]" ||
+          nextNonWs === ":" ||
+          lookAheadIdx >= str.length;
+
+        if (isFollowedByDelimiter) {
+          inString = false;
+          result += char;
+        } else {
+          result += '\\"';
+        }
+      } else {
+        result += char;
+      }
+    }
+  }
+
+  if (inString) {
+    result += '"';
+  }
+
+  result = result.replace(/:\s*$/, ": null").replace(/,\s*$/, "");
+
+  while (stack.length > 0) {
+    const open = stack.pop();
+    result = result.replace(/,\s*$/, "");
+    if (open === "{") {
+      result += "}";
+    } else if (open === "[") {
+      result += "]";
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Repairs common JSON formatting flaws produced by LLMs:
+ * - Unescaped quotes inside string values
+ * - Trailing commas before } and ]
+ * - Single/multi-line comments
+ * - Unescaped newlines/tabs inside strings
+ * - Truncated JSON structures
+ */
+export function repairJson(raw: string): string {
+  let text = extractJsonFromText(raw).trim();
+  if (!text) return "";
+
+  text = removeCommentsFromText(text);
+  text = fixStringsAndStructure(text);
+  text = text.replace(/,(\s*[}\]])/g, "$1");
+
+  return text;
+}
+
+/**
+ * Robustly parses and validates JSON output from an LLM against a Zod schema.
+ */
+export function parseAndValidateJson<T extends z.ZodTypeAny>(
+  rawText: string,
+  schema: T
+): z.infer<T> {
+  const cleaned = extractJsonFromText(rawText);
+  if (!cleaned) {
+    throw new Error("No JSON content found in model output");
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch {
+    try {
+      const repaired = repairJson(rawText);
+      parsed = JSON.parse(repaired);
+    } catch (parseErr) {
+      throw new Error(
+        `Failed to parse model JSON: ${parseErr instanceof Error ? parseErr.message : String(parseErr)}`
+      );
+    }
+  }
+
+  if (Array.isArray(parsed)) {
+    const wrapped = { recommendations: parsed };
+    const wrappedResult = schema.safeParse(wrapped);
+    if (wrappedResult.success) {
+      return wrappedResult.data;
+    }
+  }
+
+  const result = schema.safeParse(parsed);
+  if (result.success) {
+    return result.data;
+  }
+
+  const issues = result.error.issues;
+  const firstIssue = issues[0];
+  const location = firstIssue?.path?.join(".") || "root";
+  throw new Error(
+    `Schema validation failed at ${location}: ${firstIssue?.message || "Invalid structure"}`
+  );
 }
 
 /**
  * Generate structured and validated output with one repair retry
  */
-export async function generateStructured<T>(params: {
+export async function generateStructured<T extends z.ZodTypeAny>(params: {
   prompt: string;
   systemPrompt?: string;
-  schema: z.ZodSchema<T>;
-}): Promise<T> {
-  const structuredPrompt = `${params.prompt}\n\nIMPORTANT: Respond ONLY with valid JSON matching the requested schema with no markdown code fences.`;
+  schema: T;
+}): Promise<z.infer<T>> {
+  const structuredPrompt = `${params.prompt}\n\nIMPORTANT: Respond ONLY with valid JSON matching the requested schema. Do NOT include markdown code fences, trailing commas, or unescaped quotes in strings.`;
   const rawResponse = await generateCompletion({
     prompt: structuredPrompt,
     systemPrompt: params.systemPrompt,
+    jsonMode: true,
   });
 
   try {
-    const cleaned = extractJsonFromText(rawResponse);
-    const parsedJson = JSON.parse(cleaned);
-    return params.schema.parse(parsedJson);
+    return parseAndValidateJson(rawResponse, params.schema);
   } catch (initialErr) {
     // Attempt one repair re-prompt with explicit schema reminder
-    const repairPrompt = `The previous response failed schema validation:\nResponse was: ${rawResponse}\nError: ${initialErr}\n\nPlease output ONLY valid JSON matching the schema (for recommendations, wrap in {"recommendations": [...]}).`;
+    const repairPrompt = `The previous response failed validation:\nError: ${initialErr instanceof Error ? initialErr.message : String(initialErr)}\nPrevious response was:\n${rawResponse}\n\nPlease output ONLY valid JSON matching the schema (for recommendations, wrap in {"recommendations": [...]}). Ensure all quotes inside strings are escaped with backslash.`;
     const repairedResponse = await generateCompletion({
       prompt: repairPrompt,
       systemPrompt: params.systemPrompt,
+      jsonMode: true,
     });
-    const cleanedRepaired = extractJsonFromText(repairedResponse);
-    const repairedJson = JSON.parse(cleanedRepaired);
-    return params.schema.parse(repairedJson);
+    return parseAndValidateJson(repairedResponse, params.schema);
   }
 }

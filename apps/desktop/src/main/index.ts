@@ -24,16 +24,21 @@ import { initSnapshotScheduler, bootstrapHistory } from "./services/scheduler";
 
 function createWindow() {
   const win = new BrowserWindow({
-    width: 980,
-    height: 700,
-    minWidth: 980,
-    maxWidth: 980,
-    minHeight: 600,
+    width: 1100,
+    height: 750,
+    minWidth: 840,
+    minHeight: 560,
+    show: false,
+    backgroundColor: "#15161a",
     webPreferences: {
       preload: path.join(__dirname, "../preload/index.js"),
       contextIsolation: true,
       nodeIntegration: false,
     },
+  });
+
+  win.once("ready-to-show", () => {
+    win.show();
   });
 
   if (process.env.ELECTRON_RENDERER_URL) {
